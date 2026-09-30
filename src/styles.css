@@ -1,1 +1,22 @@
-/* You can add global styles to this file, and also import other style files */
+@import "tailwindcss";
+@import "./styles/storefront.css";
+@import "./styles/pages.css";
+@import "./styles/kawama-home.css";
+
+@theme {
+  --font-sans: "Montserrat", "Segoe UI", Arial, sans-serif;
+  --color-kawama: #fb451e;
+  --color-kawama-dark: #db3514;
+  --color-kawama-ink: #11151d;
+  --color-kawama-muted: #4f5866;
+}
+
+@layer base {
+  body {
+    @apply font-sans text-base font-medium text-kawama-ink antialiased;
+  }
+
+  p {
+    @apply font-medium;
+  }
+}

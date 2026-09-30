@@ -1,0 +1,131 @@
+<div class="product-page page-shell">
+  @if (loading) {
+    <div class="detail-skeleton" aria-label="Loading product"><div></div><div></div></div>
+  } @else if (product) {
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/">Home</a><span>/</span><a routerLink="/shop">Shop</a><span>/</span>
+      <a routerLink="/shop" [queryParams]="{ category: product.category }">{{ product.category }}</a><span>/</span>
+      <span>{{ product.name }}</span>
+    </nav>
+
+    <section class="product-detail" aria-labelledby="product-title">
+      <div class="detail-gallery">
+        <div class="detail-media">
+          @if (product.images[activeImageIndex]; as image) {
+            <img [src]="image.src" [alt]="image.alt" width="900" height="720" />
+          } @else {
+            <span class="detail-image-placeholder"><i class="uil uil-image-v" aria-hidden="true"></i><small>Product image coming soon</small></span>
+          }
+        </div>
+        @if (product.images.length) {
+          <div class="detail-thumbnails" aria-label="Product images">
+            @for (image of product.images; track image.src; let index = $index) {
+              <button type="button" [class.active]="activeImageIndex === index" (click)="selectImage(index)" [attr.aria-label]="'Show image ' + (index + 1)">
+                <img [src]="image.src" alt="" width="160" height="120" />
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="detail-copy">
+        <p class="detail-category">{{ product.category }}</p>
+        <h1 id="product-title">{{ product.name }}</h1>
+        <div class="detail-price-stock">
+          <div class="detail-price price-row">
+            <strong>{{ product.price | currency: product.currency : 'symbol-narrow' : '1.0-0' : 'en-GH' }}</strong>
+            @if (product.compareAtPrice) {
+              <s>{{ product.compareAtPrice | currency: product.currency : 'symbol-narrow' : '1.0-0' : 'en-GH' }}</s>
+            }
+          </div>
+          <span class="stock-pill" [class.out]="!product.inStock">{{ product.inStock ? 'In Stock' : 'Sold Out' }}</span>
+        </div>
+        <p class="detail-description text-[15px]! font-medium! leading-7! sm:text-base!">{{ product.shortDescription }}</p>
+
+        <div class="key-features">
+          <h2>Key Features</h2>
+          <ul>
+            @for (detail of product.details; track detail) {
+              <li><span aria-hidden="true"></span>{{ detail }}</li>
+            }
+          </ul>
+        </div>
+
+        <div class="detail-actions">
+          <div class="quantity-control" aria-label="Quantity">
+            <button type="button" aria-label="Decrease quantity" (click)="changeQuantity(-1)" [disabled]="quantity === 1">−</button>
+            <span aria-live="polite">{{ quantity }}</span>
+            <button type="button" aria-label="Increase quantity" (click)="changeQuantity(1)" [disabled]="quantity === 20">+</button>
+          </div>
+          <button class="button button-primary detail-add" type="button" [disabled]="!product.inStock" (click)="addToCart()">
+            <i class="uil uil-shopping-cart-alt" aria-hidden="true"></i>{{ product.inStock ? 'Add to cart' : 'Sold out' }}
+          </button>
+          <button class="button button-outline detail-share" type="button" (click)="share()">
+            <i class="uil uil-share-alt" aria-hidden="true"></i>Share product
+          </button>
+        </div>
+        @if (feedback) {
+          <p class="status-message" [class.error]="shareError" role="status">{{ feedback }}</p>
+        }
+      </div>
+    </section>
+
+    <nav class="detail-tabs" aria-label="Product page sections">
+      <a href="#product-details">Product Details</a>
+      <a href="#product-reviews">Reviews ({{ reviews.summaryFor(product.id).count }})</a>
+    </nav>
+
+    <section id="product-details" class="product-details-panel" aria-labelledby="details-title">
+      <div>
+        <h2 id="details-title" class="sr-only">Product details</h2>
+        <p class="text-[15px]! font-medium! leading-7! sm:text-base!">{{ product.description }}</p>
+      </div>
+      <dl>
+        @for (detail of product.details; track detail; let index = $index) {
+          <div><dt>Detail {{ index + 1 }}</dt><dd>{{ detail }}</dd></div>
+        }
+      </dl>
+    </section>
+
+    <section id="product-reviews" class="customer-reviews" aria-labelledby="product-reviews-title">
+      <div class="section-title-row">
+        <h2 id="product-reviews-title">Customer Reviews</h2>
+      </div>
+      @if (reviews.forProduct(product.id).length) {
+        <div class="reviews-list">
+          @for (review of reviews.forProduct(product.id); track review.id) {
+            <article class="review-item">
+              <div class="review-avatar" aria-hidden="true">{{ review.reviewerName.slice(0, 2).toUpperCase() }}</div>
+              <div>
+                <strong>{{ review.reviewerName }}</strong>
+                <span class="review-stars" [attr.aria-label]="review.rating + ' out of 5 stars'">{{ '★'.repeat(review.rating) }}{{ '☆'.repeat(5 - review.rating) }}</span>
+                <time [attr.datetime]="review.createdAt">{{ review.createdAt | date: 'mediumDate' }}</time>
+                <p class="text-sm! font-medium! leading-6!">{{ review.comment }}</p>
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <div class="empty-state compact-empty"><h3>No customer reviews yet.</h3><p class="text-[15px]! font-medium! leading-7! sm:text-base!">Reviews from completed purchases will appear here.</p></div>
+      }
+    </section>
+
+    @if (recommendations.length) {
+      <section class="related-products" aria-labelledby="related-title">
+        <div class="section-title-row">
+          <h2 id="related-title">Related Products</h2>
+          <a class="text-link" routerLink="/shop">Shop all products <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
+        </div>
+        <div class="featured-grid">
+          @for (item of recommendations; track item.id) {
+            <app-product-card [product]="item" />
+          }
+        </div>
+      </section>
+    }
+  } @else {
+    <section class="not-found">
+      <div><h1>We could not find that product.</h1><p class="text-[15px]! font-medium! leading-7! sm:text-base!">It may have moved or is no longer in the current collection.</p><a class="button button-primary" routerLink="/shop">Return to the shop</a></div>
+    </section>
+  }
+</div>

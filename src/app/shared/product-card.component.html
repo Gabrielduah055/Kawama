@@ -1,0 +1,39 @@
+<article class="product-card flex h-full flex-col overflow-hidden border border-slate-200 bg-white">
+  <a class="product-image-wrap" [routerLink]="['/product', product.slug]">
+    <!-- Stock / New badge -->
+    @if (product.isNew) {
+    <span class="product-badge new">New</span>
+    } @else if (product.stockLevel === 'low_stock') {
+    <span class="product-badge low-stock">Low stock</span>
+    } @else if (product.stockLevel === 'out_of_stock' || !product.inStock) {
+    <span class="product-badge out-of-stock">Sold out</span>
+    } @else {
+    <span class="product-badge in-stock">In stock</span>
+    }
+
+    @if (product.images[0]; as image) {
+      <img class="product-image" [src]="image.src" [alt]="image.alt" width="640" height="480" loading="lazy" />
+    } @else {
+      <span class="product-image-placeholder" aria-label="Product image not supplied">
+        <i class="uil uil-image-v" aria-hidden="true"></i>
+        <small>Image coming soon</small>
+      </span>
+    }
+  </a>
+  <div class="product-card-content flex flex-1 flex-col">
+    <a class="product-name" [routerLink]="['/product', product.slug]">{{ product.name }}</a>
+    <div class="price-row">
+      <strong>{{ product.price | currency: product.currency : 'symbol-narrow' : '1.0-0' : 'en-GH' }}</strong>
+      @if (product.compareAtPrice) {
+      <s>{{ product.compareAtPrice | currency: product.currency : 'symbol-narrow' : '1.0-0' : 'en-GH' }}</s>
+      }
+    </div>
+    <div class="product-card-bottom mt-auto">
+      <button class="add-button" [class.added]="added()" type="button" [disabled]="!product.inStock"
+        (click)="addToCart($event)">
+        <i class="uil uil-shopping-cart-alt" aria-hidden="true"></i>
+        {{ !product.inStock ? 'Sold out' : added() ? 'Added' : 'Add to cart' }}
+      </button>
+    </div>
+  </div>
+</article>

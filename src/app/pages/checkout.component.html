@@ -1,0 +1,58 @@
+<div class="checkout-page page-shell">
+  <nav class="breadcrumb" aria-label="Breadcrumb"><a routerLink="/">Home</a><span>/</span><a routerLink="/cart">Cart</a><span>/</span><span>Checkout</span></nav>
+  <h1>Checkout</h1>
+  <p class="page-intro text-[15px]! font-medium! leading-7! sm:text-base!">Share your details and continue to WhatsApp to confirm your order.</p>
+
+  @if (lines.length) {
+    <form class="checkout-layout" [formGroup]="checkoutForm" (ngSubmit)="checkout()" novalidate>
+      <section class="checkout-details-card" aria-labelledby="checkout-details-title">
+        <h2 id="checkout-details-title">Your Details</h2>
+        <p class="text-sm! font-medium! leading-6!">We will use this information to prepare your order.</p>
+
+        <label class="form-field">
+          <span>Full Name <em>*</em></span>
+          <span class="input-with-icon"><i class="uil uil-user" aria-hidden="true"></i><input type="text" formControlName="customerName" autocomplete="name" placeholder="Enter your full name" /></span>
+          @if (checkoutForm.controls.customerName.touched && checkoutForm.controls.customerName.invalid) {<small class="field-error">Enter at least two characters.</small>}
+        </label>
+        <label class="form-field">
+          <span>Phone Number <em>*</em></span>
+          <span class="input-with-icon"><i class="uil uil-phone" aria-hidden="true"></i><input type="tel" formControlName="phone" autocomplete="tel" inputmode="tel" placeholder="Enter your phone number" /></span>
+          @if (checkoutForm.controls.phone.touched && checkoutForm.controls.phone.invalid) {<small class="field-error">Enter a valid phone number.</small>}
+        </label>
+        <label class="form-field">
+          <span>Delivery Area / Address <em>*</em></span>
+          <span class="input-with-icon textarea-icon"><i class="uil uil-map-marker" aria-hidden="true"></i><textarea rows="4" formControlName="deliveryAddress" autocomplete="street-address" placeholder="Enter your delivery area or full address"></textarea></span>
+          @if (checkoutForm.controls.deliveryAddress.touched && checkoutForm.controls.deliveryAddress.invalid) {<small class="field-error">Enter the delivery area or full address.</small>}
+        </label>
+        <label class="form-field">
+          <span>Order Notes <small>(Optional)</small></span>
+          <span class="input-with-icon textarea-icon"><i class="uil uil-file-alt" aria-hidden="true"></i><textarea rows="3" formControlName="note" maxlength="300" placeholder="Preferred delivery time, landmark, or other instructions"></textarea></span>
+        </label>
+      </section>
+
+      <aside class="order-summary-card" aria-labelledby="order-summary-title">
+        <h2 id="order-summary-title">Order Summary</h2>
+        <div class="checkout-lines">
+          @for (line of lines; track line.product.id) {
+            <article>
+              <div class="checkout-line-image">
+                @if (line.product.images[0]; as image) {<img [src]="image.src" [alt]="image.alt" width="110" height="90" />} @else {<i class="uil uil-image-v" aria-hidden="true"></i>}
+              </div>
+              <div><strong>{{ line.product.name }}</strong><span>Qty: {{ line.quantity }}</span></div>
+              <strong>{{ line.product.price * line.quantity | currency: line.product.currency : 'symbol-narrow' : '1.0-0' : 'en-GH' }}</strong>
+            </article>
+          }
+        </div>
+        <div class="summary-row"><span>Subtotal ({{ cart.itemCount() }} {{ cart.itemCount() === 1 ? 'item' : 'items' }})</span><strong>{{ subtotal | currency: config.currencyCode : 'symbol-narrow' : '1.0-0' : config.locale }}</strong></div>
+        <div class="summary-row"><span>Delivery Fee <i class="uil uil-info-circle" aria-hidden="true"></i></span><span>Confirmed on WhatsApp</span></div>
+        <div class="summary-total"><strong>Total</strong><strong>{{ subtotal | currency: config.currencyCode : 'symbol-narrow' : '1.0-0' : config.locale }}</strong></div>
+        <button class="button button-primary checkout-submit" type="submit"><i class="uil uil-whatsapp" aria-hidden="true"></i>Continue to WhatsApp <i class="uil uil-arrow-right" aria-hidden="true"></i></button>
+        @if (submitted && checkoutForm.invalid) {<p class="status-message error" role="alert">Check the highlighted customer details.</p>}
+        @if (!config.whatsappNumber) {<p class="config-note">Development mode: add the business WhatsApp number in storefront configuration before launch.</p>}
+        <div class="whatsapp-next"><i class="uil uil-whatsapp" aria-hidden="true"></i><div><strong>What happens next?</strong><p class="text-sm! font-medium! leading-6!">WhatsApp opens with your order details ready to review. Availability and delivery charges are confirmed in chat.</p></div></div>
+      </aside>
+    </form>
+  } @else {
+    <section class="empty-state empty-cart"><i class="uil uil-shopping-cart-alt" aria-hidden="true"></i><h2>Your cart is empty.</h2><p class="text-[15px]! font-medium! leading-7! sm:text-base!">Add products before starting checkout.</p><a class="button button-primary" routerLink="/shop">Shop products</a></section>
+  }
+</div>

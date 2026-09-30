@@ -1,0 +1,54 @@
+<div class="contact-page">
+  <section class="contact-hero page-shell" aria-labelledby="contact-title">
+    <div class="contact-hero-copy">
+      <nav class="breadcrumb" aria-label="Breadcrumb"><a routerLink="/">Home</a><span>/</span><span>Contact</span></nav>
+      <p class="hero-kicker">Get in touch</p>
+      <h1 id="contact-title">Contact Kawama</h1>
+      <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Questions about a product or your order? Send us a message on WhatsApp.</p>
+      @if (config.whatsappNumber) {
+        <a class="button button-primary" [href]="'https://wa.me/' + config.whatsappNumber" target="_blank" rel="noopener"><i class="uil uil-whatsapp" aria-hidden="true"></i>Chat on WhatsApp <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
+      } @else {
+        <p class="contact-config-note">The business WhatsApp number still needs to be configured before this chat link can go live.</p>
+      }
+      <div class="contact-location">
+        <i class="uil uil-map-marker" aria-hidden="true"></i>
+        <div><strong>Our Location</strong><span>{{ config.locationLabel }}</span><p class="text-sm! font-medium! leading-6!">Delivery areas and charges are confirmed with each order.</p></div>
+      </div>
+    </div>
+    <img src="/images/kawama-hero-cookware.png" alt="Cream cookware arranged in a bright kitchen" width="1920" height="817" />
+  </section>
+
+  <section class="faq-section page-shell" aria-labelledby="faq-title">
+    <p class="hero-kicker">Helpful information</p>
+    <h2 id="faq-title">Frequently Asked Questions</h2>
+    <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Here are quick answers to common questions. If you need more help, contact Kawama on WhatsApp once the business number is configured.</p>
+    <div class="faq-list">
+      <details open>
+        <summary><span>1</span><strong>How can I check if a product is available?</strong><i class="uil uil-angle-down" aria-hidden="true"></i></summary>
+        <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Send the product name or a screenshot through WhatsApp and the current availability can be confirmed.</p>
+      </details>
+      <details>
+        <summary><span>2</span><strong>How will I know if my order is confirmed?</strong><i class="uil uil-angle-down" aria-hidden="true"></i></summary>
+        <p class="text-[15px]! font-medium! leading-7! sm:text-base!">After you send the cart summary, Kawama can confirm product availability, delivery details, and the next steps in the same chat.</p>
+      </details>
+      <details>
+        <summary><span>3</span><strong>How does WhatsApp checkout work?</strong><i class="uil uil-angle-down" aria-hidden="true"></i></summary>
+        <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Add products to your cart, enter your contact and delivery details, then send the prepared order summary through WhatsApp.</p>
+      </details>
+    </div>
+  </section>
+
+  <section class="contact-banner" aria-labelledby="confidence-title">
+    <img src="/images/kawama-category-cookware-black.png" alt="Black cookware prepared for an everyday meal" width="1680" height="945" loading="lazy" />
+    <div class="page-shell contact-banner-copy">
+      <p class="hero-kicker">Quality kitchenware</p>
+      <h2 id="confidence-title">Cook with confidence</h2>
+      <p class="text-[15px]! font-medium! leading-7! sm:text-base!">From everyday meals to special occasions, find practical kitchenware for your home.</p>
+      @if (config.whatsappNumber) {
+        <a class="button button-primary" [href]="'https://wa.me/' + config.whatsappNumber" target="_blank" rel="noopener"><i class="uil uil-whatsapp" aria-hidden="true"></i>Chat on WhatsApp <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
+      } @else {
+        <a class="button button-primary" routerLink="/shop">Shop kitchenware <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
+      }
+    </div>
+  </section>
+</div>

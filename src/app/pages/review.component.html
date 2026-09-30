@@ -1,0 +1,78 @@
+<div class="review-page page-shell">
+  @if (loading) {
+    <div class="review-shell"><div class="review-form-card">Loading product...</div></div>
+  } @else if (product) {
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/">Shop</a><span>/</span><a [routerLink]="['/product', product.slug]">{{ product.name }}</a><span>/</span><span>Review</span>
+    </nav>
+    <div class="review-shell">
+      <aside class="review-product">
+        @if (product.images[0]; as image) {
+          <img [src]="image.src" [alt]="image.alt" width="700" height="560" />
+        } @else {
+          <div class="product-image-placeholder" aria-label="Product image not supplied"><i class="uil uil-image-v" aria-hidden="true"></i><small>Image coming soon</small></div>
+        }
+        <span>{{ product.category }}</span>
+        <h1>How was the {{ product.name }}?</h1>
+        <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Your experience can help another Kawama customer choose confidently.</p>
+      </aside>
+
+      <section class="review-form-card" aria-labelledby="review-form-title">
+        @if (submitted) {
+          <div class="review-success">
+            <div aria-hidden="true"><i class="uil uil-check"></i></div>
+            <h2 id="review-form-title">Thank you for your review.</h2>
+            <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Your feedback is now included with this product on this device.</p>
+            <a class="button button-dark" [routerLink]="['/product', product.slug]">View product</a>
+          </div>
+        } @else {
+          <h2 id="review-form-title">Share your experience</h2>
+          <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Write a short, honest note about how the product worked for you.</p>
+          <form [formGroup]="reviewForm" (ngSubmit)="submit()" novalidate>
+            <fieldset class="rating-field">
+              <legend>Your rating</legend>
+              <div>
+                @for (star of [1, 2, 3, 4, 5]; track star) {
+                  <button
+                    type="button"
+                    [class.selected]="reviewForm.controls.rating.value >= star"
+                    [attr.aria-label]="star + (star === 1 ? ' star' : ' stars')"
+                    [attr.aria-pressed]="reviewForm.controls.rating.value === star"
+                    (click)="setRating(star)"
+                  >★</button>
+                }
+              </div>
+              @if (reviewForm.controls.rating.touched && reviewForm.controls.rating.invalid) {
+                <small class="field-error">Choose a rating from 1 to 5.</small>
+              }
+            </fieldset>
+            <label class="form-field">
+              <span>Your name</span>
+              <input type="text" formControlName="reviewerName" autocomplete="name" />
+              @if (reviewForm.controls.reviewerName.touched && reviewForm.controls.reviewerName.invalid) {
+                <small class="field-error">Enter at least two characters.</small>
+              }
+            </label>
+            <label class="form-field">
+              <span>Your review</span>
+              <textarea rows="6" formControlName="comment" maxlength="500"></textarea>
+              <small>{{ reviewForm.controls.comment.value.length }}/500 characters</small>
+              @if (reviewForm.controls.comment.touched && reviewForm.controls.comment.invalid) {
+                <small class="field-error">Write at least 10 characters.</small>
+              }
+            </label>
+            <button class="button button-dark review-submit" type="submit">Submit review</button>
+          </form>
+        }
+      </section>
+    </div>
+  } @else {
+    <section class="not-found">
+      <div>
+        <h1 class="page-title">This review link is not available.</h1>
+        <p class="text-[15px]! font-medium! leading-7! sm:text-base!">The product may have moved or is no longer in the current collection.</p>
+        <a class="button button-dark" routerLink="/">Return to the shop</a>
+      </div>
+    </section>
+  }
+</div>

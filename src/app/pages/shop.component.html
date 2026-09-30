@@ -1,0 +1,63 @@
+<section class="shop-hero page-shell" aria-labelledby="shop-hero-title">
+  <div class="shop-hero-copy">
+    <p class="hero-kicker">Quality kitchenware</p>
+    <h1 id="shop-hero-title">Shop all kitchenware</h1>
+    <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Find practical cookware, appliances, kitchen tools, and storage for everyday cooking.</p>
+  </div>
+  <img src="/images/kawama-hero-cookware.png" alt="Cream cookware arranged in a bright kitchen" width="1920" height="817" />
+</section>
+
+<div class="shop-page page-shell">
+  <nav class="breadcrumb" aria-label="Breadcrumb"><a routerLink="/">Home</a><span>/</span><span>Shop</span></nav>
+
+  <div class="shop-heading-row">
+    <h1>Shop all kitchenware</h1>
+    <div class="shop-search-actions">
+      <label class="shop-inline-search">
+        <i class="uil uil-search" aria-hidden="true"></i>
+        <span class="sr-only">Search products</span>
+        <input type="search" [(ngModel)]="searchQuery" placeholder="Search products..." />
+      </label>
+      <button class="filter-toggle" type="button" [attr.aria-expanded]="filtersOpen()" (click)="filtersOpen.set(!filtersOpen())">
+        <i class="uil uil-sliders-v-alt" aria-hidden="true"></i> Filters
+      </button>
+    </div>
+  </div>
+
+  <div class="shop-filter-row" [class.mobile-open]="filtersOpen()">
+    <div class="category-tabs" aria-label="Product categories">
+      @for (category of categories; track category) {
+        <button type="button" [class.active]="activeCategory === category" [attr.aria-pressed]="activeCategory === category" (click)="activeCategory = category">
+          {{ category }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="shop-results-row">
+    <span>{{ filteredProducts.length }} {{ filteredProducts.length === 1 ? 'product' : 'products' }}</span>
+    <label>Sort by
+      <select [(ngModel)]="sortBy">
+        <option value="featured">Featured</option>
+        <option value="name">Name</option>
+        <option value="price-low">Price: low to high</option>
+        <option value="price-high">Price: high to low</option>
+      </select>
+    </label>
+  </div>
+
+  @if (filteredProducts.length) {
+    <div class="shop-product-grid">
+      @for (product of filteredProducts; track product.id) {
+        <app-product-card [product]="product" />
+      }
+    </div>
+  } @else {
+    <section class="empty-state">
+      <i class="uil uil-search" aria-hidden="true"></i>
+      <h2>No products match your search.</h2>
+      <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Try another word or clear the selected category.</p>
+      <button class="button button-primary" type="button" (click)="resetFilters()">Clear filters</button>
+    </section>
+  }
+</div>

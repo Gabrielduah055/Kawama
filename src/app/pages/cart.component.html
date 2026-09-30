@@ -1,0 +1,50 @@
+<div class="cart-page page-shell">
+  <nav class="breadcrumb" aria-label="Breadcrumb"><a routerLink="/">Home</a><span>/</span><span>Cart</span></nav>
+  <h1>Your Cart</h1>
+  <p class="page-intro text-[15px]! font-medium! leading-7! sm:text-base!">Review your items and proceed to checkout.</p>
+
+  @if (lines.length) {
+    <section class="cart-card" aria-label="Items in your cart">
+      <div class="cart-table-head" aria-hidden="true"><span>Product</span><span>Price</span><span>Quantity</span><span>Total</span></div>
+      @for (line of lines; track line.product.id) {
+        <article class="cart-line">
+          <div class="cart-product">
+            <a [routerLink]="['/product', line.product.slug]" class="cart-image">
+              @if (line.product.images[0]; as image) {
+                <img [src]="image.src" [alt]="image.alt" width="220" height="170" />
+              } @else {
+                <span class="product-image-placeholder"><i class="uil uil-image-v" aria-hidden="true"></i></span>
+              }
+            </a>
+            <div><a [routerLink]="['/product', line.product.slug]">{{ line.product.name }}</a><p class="text-sm! font-medium! leading-6!">{{ line.product.shortDescription }}</p></div>
+          </div>
+          <strong class="cart-unit-price">{{ line.product.price | currency: line.product.currency : 'symbol-narrow' : '1.0-0' : 'en-GH' }}</strong>
+          <div class="cart-quantity-column">
+            <div class="quantity-control" [attr.aria-label]="'Quantity for ' + line.product.name">
+              <button type="button" aria-label="Decrease quantity" (click)="adjust(line, -1)">−</button>
+              <span>{{ line.quantity }}</span>
+              <button type="button" aria-label="Increase quantity" (click)="adjust(line, 1)" [disabled]="line.quantity === 20">+</button>
+            </div>
+            <button class="remove-button" type="button" (click)="cart.remove(line.product.id)"><i class="uil uil-trash-alt" aria-hidden="true"></i>Remove</button>
+          </div>
+          <strong class="cart-line-total">{{ line.product.price * line.quantity | currency: line.product.currency : 'symbol-narrow' : '1.0-0' : 'en-GH' }}</strong>
+        </article>
+      }
+
+      <div class="cart-footer-row">
+        <a class="button button-outline" routerLink="/shop"><i class="uil uil-arrow-left" aria-hidden="true"></i>Continue shopping</a>
+        <div class="cart-total-block">
+          <div><span>Subtotal ({{ cart.itemCount() }} {{ cart.itemCount() === 1 ? 'item' : 'items' }})</span><strong>{{ subtotal | currency: config.currencyCode : 'symbol-narrow' : '1.0-0' : config.locale }}</strong></div>
+          <a class="button button-primary" routerLink="/checkout">Checkout <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
+        </div>
+      </div>
+    </section>
+  } @else {
+    <section class="empty-state empty-cart">
+      <i class="uil uil-shopping-cart-alt" aria-hidden="true"></i>
+      <h2>Your cart is empty.</h2>
+      <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Browse the Kawama collection and add the kitchenware you need.</p>
+      <a class="button button-primary" routerLink="/shop">Shop products</a>
+    </section>
+  }
+</div>
