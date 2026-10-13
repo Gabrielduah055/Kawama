@@ -8,6 +8,7 @@ export interface Product {
   readonly slug: string;
   readonly name: string;
   readonly category: string;
+  readonly categorySlug?: string;
   readonly shortDescription: string;
   readonly description: string;
   readonly price: number;
@@ -22,6 +23,15 @@ export interface Product {
   readonly complementaryCategories: readonly string[];
   readonly details: readonly string[];
   readonly specifications?: readonly ProductSpecification[];
+}
+
+export interface Category {
+  readonly id: string;
+  readonly name: string;
+  readonly slug: string;
+  readonly description: string;
+  readonly image?: ProductImage;
+  readonly displayOrder: number;
 }
 
 export interface ProductSpecification {
@@ -41,6 +51,11 @@ export interface Review {
 export interface ReviewSummary {
   readonly average: number;
   readonly count: number;
+}
+
+export interface ReviewSubmission {
+  readonly id: string;
+  readonly status: 'pending';
 }
 
 export interface CartItem {

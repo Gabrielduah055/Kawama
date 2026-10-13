@@ -6,7 +6,7 @@
       <h1 id="contact-title">Contact Kawama</h1>
       <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Questions about a product or your order? Send us a message on WhatsApp.</p>
       @if (config.whatsappNumber) {
-        <a class="button button-primary" [href]="'https://wa.me/' + config.whatsappNumber" target="_blank" rel="noopener"><i class="uil uil-whatsapp" aria-hidden="true"></i>Chat on WhatsApp <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
+        <a class="button button-primary" [href]="config.whatsappUrl" target="_blank" rel="noopener"><i class="uil uil-whatsapp" aria-hidden="true"></i>Chat on WhatsApp <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
       } @else {
         <p class="contact-config-note">The business WhatsApp number still needs to be configured before this chat link can go live.</p>
       }
@@ -45,7 +45,7 @@
       <h2 id="confidence-title">Cook with confidence</h2>
       <p class="text-[15px]! font-medium! leading-7! sm:text-base!">From everyday meals to special occasions, find practical kitchenware for your home.</p>
       @if (config.whatsappNumber) {
-        <a class="button button-primary" [href]="'https://wa.me/' + config.whatsappNumber" target="_blank" rel="noopener"><i class="uil uil-whatsapp" aria-hidden="true"></i>Chat on WhatsApp <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
+        <a class="button button-primary" [href]="config.whatsappUrl" target="_blank" rel="noopener"><i class="uil uil-whatsapp" aria-hidden="true"></i>Chat on WhatsApp <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
       } @else {
         <a class="button button-primary" routerLink="/shop">Shop kitchenware <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
       }

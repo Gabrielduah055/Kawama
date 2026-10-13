@@ -3,7 +3,11 @@
   <h1>Checkout</h1>
   <p class="page-intro text-[15px]! font-medium! leading-7! sm:text-base!">Share your details and continue to WhatsApp to confirm your order.</p>
 
-  @if (lines.length) {
+  @if (loadError) {
+    <section class="empty-state" role="alert"><h2>We could not load current product details.</h2><p class="text-[15px]! font-medium! leading-7! sm:text-base!">Your cart is still saved. Try again before continuing to WhatsApp.</p><button class="button button-primary" type="button" (click)="load()">Try again</button></section>
+  } @else if (loading) {
+    <app-loading-spinner label="Preparing checkout..." />
+  } @else if (lines.length) {
     <form class="checkout-layout" [formGroup]="checkoutForm" (ngSubmit)="checkout()" novalidate>
       <section class="checkout-details-card" aria-labelledby="checkout-details-title">
         <h2 id="checkout-details-title">Your Details</h2>

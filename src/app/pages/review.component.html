@@ -1,6 +1,8 @@
 <div class="review-page page-shell">
   @if (loading) {
-    <div class="review-shell"><div class="review-form-card">Loading product...</div></div>
+    <app-loading-spinner label="Loading product..." />
+  } @else if (loadError) {
+    <section class="empty-state" role="alert"><h1>We could not load this review form.</h1><p class="text-[15px]! font-medium! leading-7! sm:text-base!">Check your connection and refresh the page.</p><a class="button button-dark" routerLink="/shop">Return to the shop</a></section>
   } @else if (product) {
     <nav class="breadcrumb" aria-label="Breadcrumb">
       <a routerLink="/">Shop</a><span>/</span><a [routerLink]="['/product', product.slug]">{{ product.name }}</a><span>/</span><span>Review</span>
@@ -22,7 +24,7 @@
           <div class="review-success">
             <div aria-hidden="true"><i class="uil uil-check"></i></div>
             <h2 id="review-form-title">Thank you for your review.</h2>
-            <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Your feedback is now included with this product on this device.</p>
+            <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Your feedback was received and will appear after Kawama approves it.</p>
             <a class="button button-dark" [routerLink]="['/product', product.slug]">View product</a>
           </div>
         } @else {
@@ -61,7 +63,10 @@
                 <small class="field-error">Write at least 10 characters.</small>
               }
             </label>
-            <button class="button button-dark review-submit" type="submit">Submit review</button>
+            @if (submitError) {
+              <p class="status-message error" role="alert">We could not submit your review. Please try again.</p>
+            }
+            <button class="button button-dark review-submit" type="submit" [disabled]="submitting">{{ submitting ? 'Submitting…' : 'Submit review' }}</button>
           </form>
         }
       </section>

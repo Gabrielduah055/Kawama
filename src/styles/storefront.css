@@ -89,6 +89,14 @@ button:disabled { cursor: not-allowed; opacity: .52; }
 
 /* Product cards */
 app-product-card { display: block; min-width: 0; height: 100%; }
+.loading-state { min-height: 220px; display: grid; place-content: center; justify-items: center; gap: .75rem; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; padding: 2rem; text-align: center; }
+.loading-state i { color: var(--primary); font-size: 2.5rem; line-height: 1; animation: kawama-spin .8s linear infinite; }
+.loading-state p { margin: 0; color: var(--muted); font-size: .82rem; font-weight: 600; }
+@keyframes kawama-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-state i { animation-duration: 1.8s; }
+}
 .product-card { height: 100%; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; transition: border-color 150ms ease, box-shadow 150ms ease; }
 .product-card:hover { border-color: #c8cdd3; box-shadow: 0 8px 24px rgb(18 24 32 / 7%); }
 .product-image-wrap { position: relative; aspect-ratio: 1.28 / 1; display: block; overflow: hidden; background: #f7f7f6; }

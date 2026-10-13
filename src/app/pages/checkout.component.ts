@@ -7,14 +7,17 @@ import { STOREFRONT_CONFIG } from '../core/storefront.config';
 import { CartService } from '../services/cart.service';
 import { CatalogRepository } from '../services/catalog.service';
 import { WhatsAppService } from '../services/whatsapp.service';
+import { LoadingSpinnerComponent } from '../shared/loading-spinner.component';
 
 @Component({
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, LoadingSpinnerComponent],
   templateUrl: './checkout.component.html',
 })
 export class CheckoutComponent implements OnInit {
   products: readonly Product[] = [];
+  loading = true;
+  loadError = false;
   submitted = false;
   readonly config = STOREFRONT_CONFIG;
   readonly checkoutForm;
@@ -34,10 +37,23 @@ export class CheckoutComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.catalog.getProducts().subscribe((products) => {
-      this.products = products;
-      const validIds = new Set(products.map((product) => product.id));
-      this.cart.items().filter((item) => !validIds.has(item.productId)).forEach((item) => this.cart.remove(item.productId));
+    this.load();
+  }
+
+  load(): void {
+    this.loading = true;
+    this.loadError = false;
+    this.catalog.getProducts().subscribe({
+      next: (products) => {
+        this.products = products;
+        this.loading = false;
+        const validIds = new Set(products.map((product) => product.id));
+        this.cart.items().filter((item) => !validIds.has(item.productId)).forEach((item) => this.cart.remove(item.productId));
+      },
+      error: () => {
+        this.loading = false;
+        this.loadError = true;
+      },
     });
   }
 

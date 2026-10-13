@@ -1,9 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, HostListener, signal, ViewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, OnInit, signal, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { STOREFRONT_CONFIG } from './core/storefront.config';
+import { Category } from './core/store.models';
 import { CartService } from './services/cart.service';
+import { CatalogRepository } from './services/catalog.service';
 
 @Component({
   selector: 'app-root',
@@ -11,7 +13,7 @@ import { CartService } from './services/cart.service';
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   @ViewChild('shopMenu') private shopMenu?: ElementRef<HTMLElement>;
   @ViewChild('mobileMenu') private mobileMenu?: ElementRef<HTMLElement>;
   @ViewChild('menuButton') private menuButton?: ElementRef<HTMLButtonElement>;
@@ -19,12 +21,21 @@ export class AppComponent {
   readonly config = STOREFRONT_CONFIG;
   readonly menuOpen = signal(false);
   readonly shopMenuOpen = signal(false);
+  categories: readonly Category[] = [];
   searchTerm = '';
 
   constructor(
     readonly cart: CartService,
     private readonly router: Router,
+    private readonly catalog: CatalogRepository,
   ) {}
+
+  ngOnInit(): void {
+    this.catalog.getCategories().subscribe({
+      next: (categories) => (this.categories = categories),
+      error: () => (this.categories = []),
+    });
+  }
 
   submitSearch(): void {
     const query = this.searchTerm.trim();

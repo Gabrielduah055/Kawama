@@ -7,16 +7,21 @@ import { CartService } from '../services/cart.service';
 import { CatalogRepository, CatalogService } from '../services/catalog.service';
 import { ReviewService } from '../services/review.service';
 import { ShareService } from '../services/share.service';
+import { LoadingSpinnerComponent } from '../shared/loading-spinner.component';
 
 @Component({
   standalone: true,
-  imports: [CommonModule, RouterLink, ProductCardComponent],
+  imports: [CommonModule, RouterLink, ProductCardComponent, LoadingSpinnerComponent],
   templateUrl: './product-detail.component.html',
 })
 export class ProductDetailComponent implements OnInit {
   product?: Product;
   products: readonly Product[] = [];
   loading = true;
+  loadError = false;
+  reviewsLoading = false;
+  reviewsError = false;
+  private currentSlug = '';
   quantity = 1;
   feedback = '';
   shareError = false;
@@ -32,19 +37,43 @@ export class ProductDetailComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.catalogRepository.getProducts().subscribe((products) => {
-      this.products = products;
+    this.catalogRepository.getProducts().subscribe({
+      next: (products) => (this.products = products),
+      error: () => (this.products = []),
     });
     this.route.paramMap.subscribe((params) => {
-      this.loading = true;
-      this.quantity = 1;
-      this.activeImageIndex = 0;
-      this.feedback = '';
-      this.catalogRepository.getProductBySlug(params.get('slug') ?? '').subscribe((product) => {
+      this.currentSlug = params.get('slug') ?? '';
+      this.loadProduct();
+    });
+  }
+
+  loadProduct(): void {
+    this.loading = true;
+    this.loadError = false;
+    this.reviewsError = false;
+    this.quantity = 1;
+    this.activeImageIndex = 0;
+    this.feedback = '';
+    this.catalogRepository.getProductBySlug(this.currentSlug).subscribe({
+      next: (product) => {
         this.product = product;
         this.loading = false;
+        if (product) {
+          this.reviewsLoading = true;
+          this.reviews.getByProductId(product.id).subscribe({
+            next: () => (this.reviewsLoading = false),
+            error: () => {
+              this.reviewsLoading = false;
+              this.reviewsError = true;
+            },
+          });
+        }
         window.scrollTo({ top: 0, behavior: 'smooth' });
-      });
+      },
+      error: () => {
+        this.loading = false;
+        this.loadError = true;
+      },
     });
   }
 

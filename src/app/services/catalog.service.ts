@@ -1,21 +1,58 @@
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable, of } from 'rxjs';
-import { Product } from '../core/store.models';
-import { SAMPLE_PRODUCTS } from '../data/sample-products';
+import { catchError, map, Observable, of, throwError } from 'rxjs';
+import { environment } from '../../environments/environment';
+import { buildApiUrl } from '../core/endpoint';
+import { Category, Product } from '../core/store.models';
+
+interface ApiEnvelope<T> {
+  readonly data: T;
+}
+
+interface PaginatedEnvelope<T> extends ApiEnvelope<readonly T[]> {
+  readonly meta: {
+    readonly page: number;
+    readonly limit: number;
+    readonly total: number;
+  };
+}
 
 export abstract class CatalogRepository {
   abstract getProducts(): Observable<readonly Product[]>;
   abstract getProductBySlug(slug: string): Observable<Product | undefined>;
+  abstract getCategories(): Observable<readonly Category[]>;
 }
 
 @Injectable({ providedIn: 'root' })
 export class CatalogService extends CatalogRepository {
+  private readonly base = environment.apiBaseUrl;
+
+  constructor(private readonly http: HttpClient) {
+    super();
+  }
+
   override getProducts(): Observable<readonly Product[]> {
-    return of(SAMPLE_PRODUCTS);
+    const params = new HttpParams().set('limit', 100);
+    return this.http
+      .get<PaginatedEnvelope<Product>>(buildApiUrl(this.base, environment.apiEndpoints.products), { params })
+      .pipe(map(({ data }) => data));
   }
 
   override getProductBySlug(slug: string): Observable<Product | undefined> {
-    return of(SAMPLE_PRODUCTS.find((product) => product.slug === slug));
+    return this.http.get<ApiEnvelope<Product>>(
+      buildApiUrl(this.base, environment.apiEndpoints.productDetail, { slug }),
+    ).pipe(
+      map(({ data }) => data),
+      catchError((error: unknown) =>
+        error instanceof HttpErrorResponse && error.status === 404 ? of(undefined) : throwError(() => error),
+      ),
+    );
+  }
+
+  override getCategories(): Observable<readonly Category[]> {
+    return this.http
+      .get<ApiEnvelope<readonly Category[]>>(buildApiUrl(this.base, environment.apiEndpoints.categories))
+      .pipe(map(({ data }) => [...data].sort((first, second) => first.displayOrder - second.displayOrder)));
   }
 
   search(products: readonly Product[], query: string, category = 'All'): readonly Product[] {
@@ -50,4 +87,3 @@ export class CatalogService extends CatalogRepository {
       .slice(0, limit);
   }
 }
-
