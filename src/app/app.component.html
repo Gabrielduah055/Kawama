@@ -40,10 +40,9 @@
       @if (shopMenuOpen()) {
       <div class="shop-menu-panel">
         <a routerLink="/shop" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenus()">All products</a>
-        <a routerLink="/shop" [queryParams]="{ category: 'Cookware' }" (click)="closeMenus()">Cookware</a>
-        <a routerLink="/shop" [queryParams]="{ category: 'Appliances' }" (click)="closeMenus()">Appliances</a>
-        <a routerLink="/shop" [queryParams]="{ category: 'Kitchen Tools' }" (click)="closeMenus()">Kitchen tools</a>
-        <a routerLink="/shop" [queryParams]="{ category: 'Storage' }" (click)="closeMenus()">Storage</a>
+        @for (category of categories; track category.id) {
+          <a routerLink="/shop" [queryParams]="{ category: category.name }" (click)="closeMenus()">{{ category.name }}</a>
+        }
       </div>
       }
     </div>
@@ -62,10 +61,9 @@
         <a class="drawer-primary" routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenus()"><i class="uil uil-home" aria-hidden="true"></i><span>Home</span></a>
         <a routerLink="/shop" (click)="closeMenus()"><i class="uil uil-apps" aria-hidden="true"></i><span>Shop all</span><i class="uil uil-angle-right-b" aria-hidden="true"></i></a>
         <p>Shop by category</p>
-        <a routerLink="/shop" [queryParams]="{ category: 'Cookware' }" (click)="closeMenus()"><i class="uil uil-crockery" aria-hidden="true"></i><span>Cookware</span><i class="uil uil-angle-right-b" aria-hidden="true"></i></a>
-        <a routerLink="/shop" [queryParams]="{ category: 'Appliances' }" (click)="closeMenus()"><i class="uil uil-bolt-alt" aria-hidden="true"></i><span>Appliances</span><i class="uil uil-angle-right-b" aria-hidden="true"></i></a>
-        <a routerLink="/shop" [queryParams]="{ category: 'Kitchen Tools' }" (click)="closeMenus()"><i class="uil uil-utensils" aria-hidden="true"></i><span>Kitchen Tools</span><i class="uil uil-angle-right-b" aria-hidden="true"></i></a>
-        <a routerLink="/shop" [queryParams]="{ category: 'Storage' }" (click)="closeMenus()"><i class="uil uil-box" aria-hidden="true"></i><span>Storage</span><i class="uil uil-angle-right-b" aria-hidden="true"></i></a>
+        @for (category of categories; track category.id) {
+          <a routerLink="/shop" [queryParams]="{ category: category.name }" (click)="closeMenus()"><i class="uil uil-apps" aria-hidden="true"></i><span>{{ category.name }}</span><i class="uil uil-angle-right-b" aria-hidden="true"></i></a>
+        }
         <div class="drawer-divider"></div>
         <a routerLink="/contact" (click)="closeMenus()"><i class="uil uil-comment-alt-message" aria-hidden="true"></i><span>Contact</span><i class="uil uil-angle-right-b" aria-hidden="true"></i></a>
         <a routerLink="/cart" (click)="closeMenus()"><i class="uil uil-shopping-cart-alt" aria-hidden="true"></i><span>Cart ({{ cart.itemCount() }})</span><i class="uil uil-angle-right-b" aria-hidden="true"></i></a>
@@ -100,10 +98,9 @@
       <div>
         <h2>Shop</h2>
         <a routerLink="/shop">All products</a>
-        <a routerLink="/shop" [queryParams]="{ category: 'Cookware' }">Cookware</a>
-        <a routerLink="/shop" [queryParams]="{ category: 'Appliances' }">Appliances</a>
-        <a routerLink="/shop" [queryParams]="{ category: 'Kitchen Tools' }">Kitchen tools</a>
-        <a routerLink="/shop" [queryParams]="{ category: 'Storage' }">Storage</a>
+        @for (category of categories; track category.id) {
+          <a routerLink="/shop" [queryParams]="{ category: category.name }">{{ category.name }}</a>
+        }
       </div>
       <div>
         <h2>Contact</h2>
@@ -112,7 +109,7 @@
         @if (config.whatsappNumber) {
         <div class="footer-whatsapp">
           <a class="button button-whatsapp"
-            [href]="'https://wa.me/' + config.whatsappNumber" target="_blank" rel="noopener">
+            [href]="config.whatsappUrl" target="_blank" rel="noopener">
             Chat on WhatsApp
           </a>
         </div>

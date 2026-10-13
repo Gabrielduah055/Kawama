@@ -3,7 +3,11 @@
   <h1>Your Cart</h1>
   <p class="page-intro text-[15px]! font-medium! leading-7! sm:text-base!">Review your items and proceed to checkout.</p>
 
-  @if (lines.length) {
+  @if (loadError) {
+    <section class="empty-state" role="alert"><h2>We could not refresh your cart.</h2><p class="text-[15px]! font-medium! leading-7! sm:text-base!">Your saved items are still on this device. Try loading the latest product details again.</p><button class="button button-primary" type="button" (click)="load()">Try again</button></section>
+  } @else if (loading) {
+    <app-loading-spinner label="Loading your cart..." />
+  } @else if (lines.length) {
     <section class="cart-card" aria-label="Items in your cart">
       <div class="cart-table-head" aria-hidden="true"><span>Product</span><span>Price</span><span>Quantity</span><span>Total</span></div>
       @for (line of lines; track line.product.id) {

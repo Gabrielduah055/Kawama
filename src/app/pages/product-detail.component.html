@@ -1,6 +1,8 @@
 <div class="product-page page-shell">
   @if (loading) {
-    <div class="detail-skeleton" aria-label="Loading product"><div></div><div></div></div>
+    <app-loading-spinner label="Loading product..." />
+  } @else if (loadError) {
+    <section class="empty-state" role="alert"><h1>We could not load this product.</h1><p class="text-[15px]! font-medium! leading-7! sm:text-base!">Check your connection and try again.</p><button class="button button-primary" type="button" (click)="loadProduct()">Try again</button></section>
   } @else if (product) {
     <nav class="breadcrumb" aria-label="Breadcrumb">
       <a routerLink="/">Home</a><span>/</span><a routerLink="/shop">Shop</a><span>/</span>
@@ -91,7 +93,11 @@
       <div class="section-title-row">
         <h2 id="product-reviews-title">Customer Reviews</h2>
       </div>
-      @if (reviews.forProduct(product.id).length) {
+      @if (reviewsLoading) {
+        <app-loading-spinner label="Loading reviews..." />
+      } @else if (reviewsError) {
+        <div class="empty-state compact-empty" role="alert"><h3>Reviews are temporarily unavailable.</h3><p class="text-[15px]! font-medium! leading-7! sm:text-base!">The product details are still available above.</p></div>
+      } @else if (reviews.forProduct(product.id).length) {
         <div class="reviews-list">
           @for (review of reviews.forProduct(product.id); track review.id) {
             <article class="review-item">

@@ -46,7 +46,16 @@
     </label>
   </div>
 
-  @if (filteredProducts.length) {
+  @if (loadError) {
+    <section class="empty-state" role="alert">
+      <i class="uil uil-exclamation-triangle" aria-hidden="true"></i>
+      <h2>We could not load the catalog.</h2>
+      <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Check your connection and try again.</p>
+      <button class="button button-primary" type="button" (click)="load()">Try again</button>
+    </section>
+  } @else if (loading) {
+    <app-loading-spinner label="Loading products..." />
+  } @else if (filteredProducts.length) {
     <div class="shop-product-grid">
       @for (product of filteredProducts; track product.id) {
         <app-product-card [product]="product" />

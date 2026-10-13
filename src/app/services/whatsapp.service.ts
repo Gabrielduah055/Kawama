@@ -1,4 +1,6 @@
 import { Injectable } from '@angular/core';
+import { environment } from '../../environments/environment';
+import { resolveEndpoint } from '../core/endpoint';
 import { OrderDraft } from '../core/store.models';
 import { STOREFRONT_CONFIG } from '../core/storefront.config';
 
@@ -28,7 +30,7 @@ export class WhatsAppService {
 
   buildUrl(order: OrderDraft): string {
     const number = STOREFRONT_CONFIG.whatsappNumber.replace(/\D/g, '');
-    const target = number ? `https://wa.me/${number}` : 'https://wa.me/';
+    const target = resolveEndpoint(environment.externalEndpoints.whatsappChat, { number });
     return `${target}?text=${encodeURIComponent(this.buildMessage(order))}`;
   }
 
