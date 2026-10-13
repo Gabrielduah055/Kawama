@@ -92,8 +92,7 @@
         <p class="text-[15px]! font-medium! leading-7! sm:text-base!">{{ product.description }}</p>
       </div>
       @if (product.specifications?.length) {
-        <section class="product-specifications" aria-labelledby="specifications-title">
-          <h3 id="specifications-title">Specifications</h3>
+        <section class="product-specifications" aria-label="Specifications">
           <dl>
             @for (specification of product.specifications; track specification.label + specification.value) {
               <div><dt>{{ specification.label }}</dt><dd>{{ specification.value }}</dd></div>
