@@ -26,6 +26,7 @@ export class ProductDetailComponent implements OnInit {
   feedback = '';
   shareError = false;
   activeImageIndex = 0;
+  activeImageFit: 'cover' | 'contain' = 'cover';
 
   constructor(
     private readonly route: ActivatedRoute,
@@ -53,6 +54,7 @@ export class ProductDetailComponent implements OnInit {
     this.reviewsError = false;
     this.quantity = 1;
     this.activeImageIndex = 0;
+    this.activeImageFit = 'cover';
     this.feedback = '';
     this.catalogRepository.getProductBySlug(this.currentSlug).subscribe({
       next: (product) => {
@@ -84,6 +86,14 @@ export class ProductDetailComponent implements OnInit {
   selectImage(index: number): void {
     if (!this.product?.images[index]) return;
     this.activeImageIndex = index;
+    this.activeImageFit = 'cover';
+  }
+
+  updateImageFit(event: Event): void {
+    const image = event.currentTarget as HTMLImageElement;
+    if (!image.naturalWidth || !image.naturalHeight) return;
+
+    this.activeImageFit = image.naturalWidth / image.naturalHeight < 1.15 ? 'contain' : 'cover';
   }
 
   addToCart(): void {

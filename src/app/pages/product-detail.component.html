@@ -14,7 +14,14 @@
       <div class="detail-gallery">
         <div class="detail-media">
           @if (product.images[activeImageIndex]; as image) {
-            <img [src]="image.src" [alt]="image.alt" width="900" height="720" />
+            <img
+              [src]="image.src"
+              [alt]="image.alt"
+              [class.detail-media-image-contained]="activeImageFit === 'contain'"
+              width="900"
+              height="720"
+              (load)="updateImageFit($event)"
+            />
           } @else {
             <span class="detail-image-placeholder"><i class="uil uil-image-v" aria-hidden="true"></i><small>Product image coming soon</small></span>
           }
@@ -44,14 +51,16 @@
         </div>
         <p class="detail-description text-[15px]! font-medium! leading-7! sm:text-base!">{{ product.shortDescription }}</p>
 
-        <div class="key-features">
-          <h2>Key Features</h2>
-          <ul>
-            @for (detail of product.details; track detail) {
-              <li><span aria-hidden="true"></span>{{ detail }}</li>
-            }
-          </ul>
-        </div>
+        @if (product.details.length) {
+          <div class="key-features">
+            <h2>Key Features</h2>
+            <ul>
+              @for (detail of product.details; track detail) {
+                <li><span aria-hidden="true"></span>{{ detail }}</li>
+              }
+            </ul>
+          </div>
+        }
 
         <div class="detail-actions">
           <div class="quantity-control" aria-label="Quantity">
@@ -77,16 +86,21 @@
       <a href="#product-reviews">Reviews ({{ reviews.summaryFor(product.id).count }})</a>
     </nav>
 
-    <section id="product-details" class="product-details-panel" aria-labelledby="details-title">
+    <section id="product-details" class="product-details-panel" [class.description-only]="!product.specifications?.length" aria-labelledby="details-title">
       <div>
         <h2 id="details-title" class="sr-only">Product details</h2>
         <p class="text-[15px]! font-medium! leading-7! sm:text-base!">{{ product.description }}</p>
       </div>
-      <dl>
-        @for (detail of product.details; track detail; let index = $index) {
-          <div><dt>Detail {{ index + 1 }}</dt><dd>{{ detail }}</dd></div>
-        }
-      </dl>
+      @if (product.specifications?.length) {
+        <section class="product-specifications" aria-labelledby="specifications-title">
+          <h3 id="specifications-title">Specifications</h3>
+          <dl>
+            @for (specification of product.specifications; track specification.label + specification.value) {
+              <div><dt>{{ specification.label }}</dt><dd>{{ specification.value }}</dd></div>
+            }
+          </dl>
+        </section>
+      }
     </section>
 
     <section id="product-reviews" class="customer-reviews" aria-labelledby="product-reviews-title">
