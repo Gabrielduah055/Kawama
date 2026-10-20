@@ -54,7 +54,11 @@
       </div>
     </section>
 
-    <app-payment-checkout [lines]="checkoutLines" [blockedItemCount]="blockedItemCount" />
+    <app-payment-checkout
+      [lines]="checkoutLines"
+      [blockedItemCount]="blockedItemCount"
+      (catalogRefreshRequested)="refreshCatalog()"
+    />
   } @else {
     <section class="empty-state empty-cart">
       <i class="uil uil-shopping-cart-alt" aria-hidden="true"></i>

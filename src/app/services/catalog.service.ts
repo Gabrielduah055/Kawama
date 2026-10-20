@@ -19,6 +19,7 @@ interface PaginatedEnvelope<T> extends ApiEnvelope<readonly T[]> {
 
 export abstract class CatalogRepository {
   abstract getProducts(): Observable<readonly Product[]>;
+  abstract refreshProducts(): Observable<readonly Product[]>;
   abstract getProductBySlug(slug: string): Observable<Product | undefined>;
   abstract getCategories(): Observable<readonly Category[]>;
 }
@@ -35,7 +36,17 @@ export class CatalogService extends CatalogRepository {
   }
 
   override getProducts(): Observable<readonly Product[]> {
-    this.productsRequest ??= this.loadProductPage(1).pipe(
+    this.productsRequest ??= this.createProductsRequest();
+    return this.productsRequest;
+  }
+
+  override refreshProducts(): Observable<readonly Product[]> {
+    this.productsRequest = this.createProductsRequest();
+    return this.productsRequest;
+  }
+
+  private createProductsRequest(): Observable<readonly Product[]> {
+    return this.loadProductPage(1).pipe(
       switchMap((firstPage) => {
         const pageCount = Math.max(1, Math.ceil(firstPage.meta.total / Math.max(firstPage.meta.limit, 1)));
         if (pageCount === 1) return of([firstPage]);
@@ -53,7 +64,6 @@ export class CatalogService extends CatalogRepository {
       }),
       shareReplay({ bufferSize: 1, refCount: true }),
     );
-    return this.productsRequest;
   }
 
   override getProductBySlug(slug: string): Observable<Product | undefined> {

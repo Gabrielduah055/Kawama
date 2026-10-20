@@ -1,21 +1,42 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Injectable, signal } from '@angular/core';
-import { map, Observable, of, tap } from 'rxjs';
+import { computed, Injectable, signal } from '@angular/core';
+import { defer, map, Observable, of, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { buildApiUrl } from '../core/endpoint';
 import {
   CheckoutCreateRequest,
-  CheckoutRequestItem,
+  CheckoutResultContext,
   CheckoutSession,
+  CheckoutSnapshotItem,
   CheckoutStatus,
   PendingCheckout,
+  ResolvedCheckout,
 } from '../core/store.models';
 
 interface ApiEnvelope<T> {
   readonly data: T;
 }
 
-const PENDING_CHECKOUT_STORAGE_KEY = 'kawama.checkout.pending.v1';
+interface CheckoutStoreState {
+  readonly version: 2;
+  readonly active?: PendingCheckout;
+  readonly history: readonly ResolvedCheckout[];
+}
+
+interface LegacyPendingCheckout {
+  readonly version: 1;
+  readonly idempotencyKey: string;
+  readonly request: CheckoutCreateRequest;
+  readonly cartSnapshot: readonly CheckoutSnapshotItem[];
+  readonly expectedAmountPesewas: number;
+  readonly createdAt: string;
+  readonly session?: CheckoutSession;
+  readonly reconciled: boolean;
+}
+
+const CHECKOUT_STORAGE_KEY = 'kawama.checkout.state.v2';
+const LEGACY_PENDING_CHECKOUT_STORAGE_KEY = 'kawama.checkout.pending.v1';
+const HISTORY_LIMIT = 10;
 
 export class PendingCheckoutConflictError extends Error {
   constructor() {
@@ -33,41 +54,46 @@ export class CheckoutStorageError extends Error {
 
 @Injectable({ providedIn: 'root' })
 export class CheckoutService {
-  private readonly pendingState = signal<PendingCheckout | undefined>(this.readPending());
-  readonly pending = this.pendingState.asReadonly();
+  private readonly storeState = signal<CheckoutStoreState>(this.readStore());
+  readonly pending = computed(() => this.storeState().active);
+  readonly history = computed(() => this.storeState().history);
 
   constructor(private readonly http: HttpClient) {}
 
   createSession(
     request: CheckoutCreateRequest,
-    cartSnapshot: readonly CheckoutRequestItem[],
+    cartSnapshot: readonly CheckoutSnapshotItem[],
     expectedAmountPesewas: number,
   ): Observable<CheckoutSession> {
-    const pending = this.preparePending(request, cartSnapshot, expectedAmountPesewas);
-    if (pending.session) return of(pending.session);
+    return defer(() => {
+      const pending = this.preparePending(request, cartSnapshot, expectedAmountPesewas);
+      if (pending.session) return of(pending.session);
 
-    const headers = new HttpHeaders({ 'Idempotency-Key': pending.idempotencyKey });
-    return this.http
-      .post<ApiEnvelope<CheckoutSession>>(
-        buildApiUrl(environment.apiBaseUrl, environment.apiEndpoints.checkoutSessions),
-        request,
-        { headers },
-      )
-      .pipe(
-        map(({ data }) => data),
-        tap((session) => {
-          if (session.checkoutToken !== pending.idempotencyKey) {
-            throw new Error('The checkout response did not match the saved session.');
-          }
-          this.savePending({ ...pending, session });
-        }),
-      );
+      const headers = new HttpHeaders({ 'Idempotency-Key': pending.idempotencyKey });
+      return this.http
+        .post<ApiEnvelope<CheckoutSession>>(
+          buildApiUrl(environment.apiBaseUrl, environment.apiEndpoints.checkoutSessions),
+          request,
+          { headers },
+        )
+        .pipe(
+          map(({ data }) => data),
+          tap((session) => {
+            if (session.checkoutToken !== pending.idempotencyKey) {
+              throw new Error('The checkout response did not match the saved session.');
+            }
+            this.saveActive({ ...pending, session });
+          }),
+        );
+    });
   }
 
   retryPending(): Observable<CheckoutSession> {
-    const pending = this.pendingState();
-    if (!pending) throw new PendingCheckoutConflictError();
-    return this.createSession(pending.request, pending.cartSnapshot, pending.expectedAmountPesewas);
+    return defer(() => {
+      const pending = this.pending();
+      if (!pending) throw new PendingCheckoutConflictError();
+      return this.createSession(pending.request, pending.cartSnapshot, pending.expectedAmountPesewas);
+    });
   }
 
   getStatus(checkoutToken: string): Observable<CheckoutStatus> {
@@ -76,6 +102,10 @@ export class CheckoutService {
         buildApiUrl(environment.apiBaseUrl, environment.apiEndpoints.checkoutStatus, { checkoutToken }),
       )
       .pipe(map(({ data }) => data));
+  }
+
+  resultContext(): CheckoutResultContext | undefined {
+    return this.pending() ?? this.history()[0];
   }
 
   authorizationUrl(session: CheckoutSession): string | undefined {
@@ -91,49 +121,79 @@ export class CheckoutService {
   }
 
   markReconciled(): void {
-    const pending = this.pendingState();
-    if (pending && !pending.reconciled) this.savePending({ ...pending, reconciled: true });
-  }
-
-  recordStatus(status: CheckoutStatus): void {
-    const pending = this.pendingState();
-    if (!pending?.session || pending.session.orderNumber !== status.orderNumber) return;
+    const active = this.pending();
+    if (!active || active.reconciled) return;
+    const updated = { ...active, reconciled: true };
     try {
-      this.savePending({
-        ...pending,
-        session: {
-          ...pending.session,
-          paymentStatus: status.paymentStatus,
-          fulfillmentStatus: status.fulfillmentStatus,
-          amountPesewas: status.amountPesewas,
-          currency: status.currency,
-        },
-      });
+      if (this.paymentStatus(updated) === 'paid') {
+        this.archiveActive(updated, 'paid');
+      } else {
+        this.saveActive(updated);
+      }
     } catch {
-      // Status remains available in the result page even if storage becomes unavailable.
+      // The cart also records reconciled tokens. Keeping this active is safer than allowing a duplicate charge.
     }
   }
 
-  clearPending(): void {
-    this.pendingState.set(undefined);
-    if (typeof sessionStorage === 'undefined') return;
+  recordStatus(status: CheckoutStatus): void {
+    const active = this.pending();
+    if (!active || (active.session && active.session.orderNumber !== status.orderNumber)) return;
+    const updated: PendingCheckout = {
+      ...active,
+      lastStatus: status,
+      ...(active.session
+        ? {
+            session: {
+              ...active.session,
+              paymentStatus: status.paymentStatus,
+              fulfillmentStatus: status.fulfillmentStatus,
+              amountPesewas: status.amountPesewas,
+              currency: status.currency,
+            },
+          }
+        : {}),
+    };
     try {
-      sessionStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
+      if (status.paymentStatus === 'failed' || status.paymentStatus === 'refunded') {
+        this.archiveActive(updated, status.paymentStatus);
+      } else {
+        this.saveActive(updated);
+      }
     } catch {
-      // The in-memory state is still cleared when browser storage is unavailable.
+      // The caller still has the verified response. The active record remains to prevent a second charge.
+    }
+  }
+
+  resolvePendingFailure(errorCode: string): boolean {
+    const active = this.pending();
+    if (!active) return true;
+    try {
+      this.archiveActive({ ...active, lastErrorCode: errorCode }, 'failed');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  clearPending(): boolean {
+    if (!this.pending()) return true;
+    try {
+      this.writeStore({ ...this.storeState(), active: undefined });
+      return true;
+    } catch {
+      return false;
     }
   }
 
   private preparePending(
     request: CheckoutCreateRequest,
-    cartSnapshot: readonly CheckoutRequestItem[],
+    cartSnapshot: readonly CheckoutSnapshotItem[],
     expectedAmountPesewas: number,
   ): PendingCheckout {
-    const current = this.pendingState();
+    const current = this.pending();
     if (current) {
       if (
         JSON.stringify(current.request) !== JSON.stringify(request) ||
-        JSON.stringify(current.cartSnapshot) !== JSON.stringify(cartSnapshot) ||
         current.expectedAmountPesewas !== expectedAmountPesewas
       ) {
         throw new PendingCheckoutConflictError();
@@ -142,61 +202,151 @@ export class CheckoutService {
     }
 
     const pending: PendingCheckout = {
-      version: 1,
+      version: 2,
+      lifecycle: 'active',
       idempotencyKey: this.randomCheckoutToken(),
       request,
-      cartSnapshot,
+      cartSnapshot: cartSnapshot.map((item) => ({ ...item })),
       expectedAmountPesewas,
       createdAt: new Date().toISOString(),
       reconciled: false,
     };
-    this.savePending(pending);
+    this.saveActive(pending);
     return pending;
   }
 
-  private savePending(pending: PendingCheckout): void {
+  private saveActive(active: PendingCheckout): void {
+    this.writeStore({ ...this.storeState(), active });
+  }
+
+  private archiveActive(active: PendingCheckout, resolution: ResolvedCheckout['resolution']): void {
+    const resolved: ResolvedCheckout = {
+      ...active,
+      lifecycle: 'resolved',
+      resolution,
+      resolvedAt: new Date().toISOString(),
+    };
+    const history = [
+      resolved,
+      ...this.storeState().history.filter((entry) => entry.idempotencyKey !== resolved.idempotencyKey),
+    ].slice(0, HISTORY_LIMIT);
+    this.writeStore({ version: 2, active: undefined, history });
+  }
+
+  private paymentStatus(checkout: PendingCheckout): CheckoutStatus['paymentStatus'] | undefined {
+    return checkout.lastStatus?.paymentStatus ?? checkout.session?.paymentStatus;
+  }
+
+  private writeStore(store: CheckoutStoreState): void {
     if (typeof sessionStorage === 'undefined') throw new CheckoutStorageError();
-    this.pendingState.set(pending);
     try {
-      sessionStorage.setItem(PENDING_CHECKOUT_STORAGE_KEY, JSON.stringify(pending));
+      sessionStorage.setItem(CHECKOUT_STORAGE_KEY, JSON.stringify(store));
     } catch {
       throw new CheckoutStorageError();
     }
+    try {
+      sessionStorage.removeItem(LEGACY_PENDING_CHECKOUT_STORAGE_KEY);
+    } catch {
+      // The v2 record is already durable; an obsolete legacy copy is harmless.
+    }
+    this.storeState.set(store);
   }
 
-  private readPending(): PendingCheckout | undefined {
-    if (typeof sessionStorage === 'undefined') return undefined;
+  private readStore(): CheckoutStoreState {
+    const empty: CheckoutStoreState = { version: 2, history: [] };
+    if (typeof sessionStorage === 'undefined') return empty;
     try {
-      const parsed: unknown = JSON.parse(sessionStorage.getItem(PENDING_CHECKOUT_STORAGE_KEY) ?? 'null');
-      if (!this.isPendingCheckout(parsed)) {
-        sessionStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
-        return undefined;
-      }
-      return parsed;
+      const parsed: unknown = JSON.parse(sessionStorage.getItem(CHECKOUT_STORAGE_KEY) ?? 'null');
+      if (this.isCheckoutStore(parsed)) return parsed;
+
+      const legacy: unknown = JSON.parse(sessionStorage.getItem(LEGACY_PENDING_CHECKOUT_STORAGE_KEY) ?? 'null');
+      if (this.isLegacyPendingCheckout(legacy)) return this.migrateLegacy(legacy);
+      return empty;
     } catch {
-      try {
-        sessionStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
-      } catch {
-        // Ignore a second storage failure while recovering malformed state.
-      }
-      return undefined;
+      return empty;
     }
+  }
+
+  private migrateLegacy(legacy: LegacyPendingCheckout): CheckoutStoreState {
+    const active: PendingCheckout = {
+      ...legacy,
+      version: 2,
+      lifecycle: 'active',
+      cartSnapshot: legacy.cartSnapshot.map((item) => ({ ...item })),
+    };
+    const paymentStatus = active.session?.paymentStatus;
+    if (paymentStatus === 'failed' || paymentStatus === 'refunded' || (paymentStatus === 'paid' && active.reconciled)) {
+      return {
+        version: 2,
+        history: [{
+          ...active,
+          lifecycle: 'resolved',
+          resolution: paymentStatus,
+          resolvedAt: active.createdAt,
+        }],
+      };
+    }
+    return { version: 2, active, history: [] };
+  }
+
+  private isCheckoutStore(value: unknown): value is CheckoutStoreState {
+    if (!value || typeof value !== 'object') return false;
+    const store = value as Partial<CheckoutStoreState>;
+    return (
+      store.version === 2 &&
+      Array.isArray(store.history) &&
+      store.history.every((entry) => this.isResolvedCheckout(entry)) &&
+      (store.active === undefined || this.isPendingCheckout(store.active))
+    );
+  }
+
+  private isLegacyPendingCheckout(value: unknown): value is LegacyPendingCheckout {
+    if (!value || typeof value !== 'object') return false;
+    const pending = value as Partial<LegacyPendingCheckout>;
+    return pending.version === 1 && this.isCheckoutRecord(pending);
   }
 
   private isPendingCheckout(value: unknown): value is PendingCheckout {
     if (!value || typeof value !== 'object') return false;
     const pending = value as Partial<PendingCheckout>;
+    return pending.version === 2 && pending.lifecycle === 'active' && this.isCheckoutRecord(pending);
+  }
+
+  private isResolvedCheckout(value: unknown): value is ResolvedCheckout {
+    if (!value || typeof value !== 'object') return false;
+    const resolved = value as Partial<ResolvedCheckout>;
     return (
-      pending.version === 1 &&
-      typeof pending.idempotencyKey === 'string' &&
-      pending.idempotencyKey.length >= 16 &&
-      typeof pending.createdAt === 'string' &&
-      Number.isInteger(pending.expectedAmountPesewas) &&
-      (pending.expectedAmountPesewas ?? -1) >= 0 &&
-      typeof pending.reconciled === 'boolean' &&
-      this.isCheckoutRequest(pending.request) &&
-      this.isCheckoutItems(pending.cartSnapshot) &&
-      (pending.session === undefined || this.isCheckoutSession(pending.session))
+      resolved.version === 2 &&
+      resolved.lifecycle === 'resolved' &&
+      ['paid', 'failed', 'refunded'].includes(resolved.resolution ?? '') &&
+      typeof resolved.resolvedAt === 'string' &&
+      this.isCheckoutRecord(resolved)
+    );
+  }
+
+  private isCheckoutRecord(value: {
+    readonly idempotencyKey?: unknown;
+    readonly request?: unknown;
+    readonly cartSnapshot?: unknown;
+    readonly expectedAmountPesewas?: unknown;
+    readonly createdAt?: unknown;
+    readonly session?: unknown;
+    readonly lastStatus?: unknown;
+    readonly lastErrorCode?: unknown;
+    readonly reconciled?: unknown;
+  }): boolean {
+    return (
+      typeof value.idempotencyKey === 'string' &&
+      value.idempotencyKey.length >= 16 &&
+      typeof value.createdAt === 'string' &&
+      Number.isInteger(value.expectedAmountPesewas) &&
+      Number(value.expectedAmountPesewas) >= 0 &&
+      typeof value.reconciled === 'boolean' &&
+      this.isCheckoutRequest(value.request) &&
+      this.isCheckoutSnapshot(value.cartSnapshot) &&
+      (value.session === undefined || this.isCheckoutSession(value.session)) &&
+      (value.lastStatus === undefined || this.isCheckoutStatus(value.lastStatus)) &&
+      (value.lastErrorCode === undefined || typeof value.lastErrorCode === 'string')
     );
   }
 
@@ -216,7 +366,25 @@ export class CheckoutService {
     );
   }
 
-  private isCheckoutItems(value: unknown): value is readonly CheckoutRequestItem[] {
+  private isCheckoutSnapshot(value: unknown): value is readonly CheckoutSnapshotItem[] {
+    return (
+      this.isCheckoutItems(value) &&
+      value.every((item) => {
+        const snapshot = item as CheckoutSnapshotItem;
+        return (
+          (snapshot.name === undefined || typeof snapshot.name === 'string') &&
+          (snapshot.slug === undefined || typeof snapshot.slug === 'string') &&
+          (snapshot.image === undefined ||
+            (typeof snapshot.image.src === 'string' && typeof snapshot.image.alt === 'string')) &&
+          (snapshot.unitPricePesewas === undefined ||
+            (Number.isInteger(snapshot.unitPricePesewas) && snapshot.unitPricePesewas >= 0)) &&
+          (snapshot.currency === undefined || snapshot.currency === 'GHS')
+        );
+      })
+    );
+  }
+
+  private isCheckoutItems(value: unknown): value is readonly CheckoutSnapshotItem[] {
     return (
       Array.isArray(value) &&
       value.length > 0 &&
@@ -224,9 +392,9 @@ export class CheckoutService {
         (item: unknown) =>
           !!item &&
           typeof item === 'object' &&
-          typeof (item as Partial<CheckoutRequestItem>).productId === 'string' &&
-          Number.isInteger((item as Partial<CheckoutRequestItem>).quantity) &&
-          ((item as Partial<CheckoutRequestItem>).quantity ?? 0) > 0,
+          typeof (item as Partial<CheckoutSnapshotItem>).productId === 'string' &&
+          Number.isInteger((item as Partial<CheckoutSnapshotItem>).quantity) &&
+          ((item as Partial<CheckoutSnapshotItem>).quantity ?? 0) > 0,
       )
     );
   }
@@ -234,29 +402,32 @@ export class CheckoutService {
   private isCheckoutSession(value: unknown): value is CheckoutSession {
     if (!value || typeof value !== 'object') return false;
     const session = value as Partial<CheckoutSession>;
-    const paymentStatuses = ['pending', 'paid', 'failed', 'refunded', 'needs_attention'];
-    const fulfillmentStatuses = [
-      'awaiting_payment',
-      'paid_awaiting_delivery',
-      'processing',
-      'out_for_delivery',
-      'delivered',
-      'cancelled',
-      'needs_attention',
-    ];
     const payment = session.payment as Partial<CheckoutSession['payment']> | undefined;
     return (
       typeof session.created === 'boolean' &&
       typeof session.checkoutToken === 'string' &&
       typeof session.orderNumber === 'string' &&
-      paymentStatuses.includes(session.paymentStatus ?? '') &&
-      fulfillmentStatuses.includes(session.fulfillmentStatus ?? '') &&
+      ['pending', 'paid', 'failed', 'refunded', 'needs_attention'].includes(session.paymentStatus ?? '') &&
+      ['awaiting_payment', 'paid_awaiting_delivery', 'processing', 'out_for_delivery', 'delivered', 'cancelled', 'needs_attention'].includes(session.fulfillmentStatus ?? '') &&
       Number.isInteger(session.amountPesewas) &&
       session.currency === 'GHS' &&
       (payment === undefined ||
         (typeof payment.reference === 'string' &&
           typeof payment.accessCode === 'string' &&
           typeof payment.authorizationUrl === 'string'))
+    );
+  }
+
+  private isCheckoutStatus(value: unknown): value is CheckoutStatus {
+    if (!value || typeof value !== 'object') return false;
+    const status = value as Partial<CheckoutStatus>;
+    return (
+      typeof status.orderNumber === 'string' &&
+      ['pending', 'paid', 'failed', 'refunded', 'needs_attention'].includes(status.paymentStatus ?? '') &&
+      ['awaiting_payment', 'paid_awaiting_delivery', 'processing', 'out_for_delivery', 'delivered', 'cancelled', 'needs_attention'].includes(status.fulfillmentStatus ?? '') &&
+      ['not_quoted', 'quoted', 'collected', 'waived'].includes(status.deliveryFeeStatus ?? '') &&
+      Number.isInteger(status.amountPesewas) &&
+      status.currency === 'GHS'
     );
   }
 

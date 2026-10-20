@@ -107,6 +107,14 @@ export interface CheckoutRequestItem {
   readonly quantity: number;
 }
 
+export interface CheckoutSnapshotItem extends CheckoutRequestItem {
+  readonly name?: string;
+  readonly slug?: string;
+  readonly image?: ProductImage;
+  readonly unitPricePesewas?: number;
+  readonly currency?: 'GHS';
+}
+
 export interface CheckoutCreateRequest {
   readonly customer: CheckoutCustomer;
   readonly orderNotes?: string;
@@ -143,13 +151,27 @@ export interface CheckoutStatus {
   };
 }
 
-export interface PendingCheckout {
-  readonly version: 1;
+interface CheckoutRecord {
+  readonly version: 2;
   readonly idempotencyKey: string;
   readonly request: CheckoutCreateRequest;
-  readonly cartSnapshot: readonly CheckoutRequestItem[];
+  readonly cartSnapshot: readonly CheckoutSnapshotItem[];
   readonly expectedAmountPesewas: number;
   readonly createdAt: string;
   readonly session?: CheckoutSession;
+  readonly lastStatus?: CheckoutStatus;
+  readonly lastErrorCode?: string;
   readonly reconciled: boolean;
 }
+
+export interface PendingCheckout extends CheckoutRecord {
+  readonly lifecycle: 'active';
+}
+
+export interface ResolvedCheckout extends CheckoutRecord {
+  readonly lifecycle: 'resolved';
+  readonly resolution: 'paid' | 'failed' | 'refunded';
+  readonly resolvedAt: string;
+}
+
+export type CheckoutResultContext = PendingCheckout | ResolvedCheckout;

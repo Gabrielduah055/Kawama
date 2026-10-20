@@ -30,19 +30,26 @@ export class CartComponent implements OnInit {
     this.load();
   }
 
-  load(): void {
-    this.loading = true;
-    this.loadError = false;
-    this.catalog.getProducts().subscribe({
+  load(forceRefresh = false): void {
+    const hasCatalog = this.products.length > 0;
+    this.loading = !hasCatalog;
+    if (!hasCatalog) this.loadError = false;
+    const productsRequest = forceRefresh ? this.catalog.refreshProducts() : this.catalog.getProducts();
+    productsRequest.subscribe({
       next: (products) => {
         this.products = products;
         this.loading = false;
+        this.loadError = false;
       },
       error: () => {
         this.loading = false;
-        this.loadError = true;
+        if (!hasCatalog) this.loadError = true;
       },
     });
+  }
+
+  refreshCatalog(): void {
+    this.load(true);
   }
 
   get lines(): readonly OrderLine[] {

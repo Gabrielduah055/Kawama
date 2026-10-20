@@ -2,7 +2,14 @@
   <section class="checkout-details-card" aria-labelledby="cart-checkout-title">
     <p class="section-label">Secure checkout</p>
     <h2 id="cart-checkout-title">Customer and delivery details</h2>
-    <p>Pay for your products securely with Paystack. Delivery charges are confirmed separately after payment.</p>
+    @if (activeCheckout) {
+      <div class="active-checkout-note" role="status">
+        <strong>These details belong to the payment already in progress.</strong>
+        <p>They are locked so changes cannot accidentally open a different order. New cart additions stay available for your next purchase.</p>
+      </div>
+    } @else {
+      <p>Pay for your products securely with Paystack. Delivery charges are confirmed separately after payment.</p>
+    }
 
     <label class="form-field">
       <span>Full name <em>*</em></span>
@@ -36,26 +43,51 @@
   </section>
 
   <aside class="order-summary-card cart-order-handoff" aria-labelledby="cart-payment-title">
-    <p class="section-label">Order summary</p>
-    <h2 id="cart-payment-title">Pay with Paystack</h2>
-    <p>You will continue to Paystack in this tab. Kawama confirms payment only from the secure backend status.</p>
+    <p class="section-label">{{ activeCheckout ? 'Payment in progress' : 'Order summary' }}</p>
+    <h2 id="cart-payment-title">{{ activeCheckout?.session?.orderNumber || 'Pay with Paystack' }}</h2>
+    @if (activeCheckout) {
+      <p>This is the exact order linked to the Paystack payment. Its saved items and customer details are shown here.</p>
+    } @else {
+      <p>You will continue to Paystack in this tab. Kawama confirms payment only from the secure backend status.</p>
+    }
 
     <div class="checkout-lines">
-      @for (line of lines; track line.product.id) {
-        <article>
-          <div class="checkout-line-image">
-            @if (line.product.images[0]; as image) {<img [src]="image.src" [alt]="image.alt" width="110" height="90" />} @else {<i class="uil uil-image-v" aria-hidden="true"></i>}
-          </div>
-          <div><strong>{{ line.product.name }}</strong><span>Qty: {{ line.quantity }}</span></div>
-          <strong>{{ lineTotal(line) | currency: line.product.currency : 'symbol-narrow' : '1.2-2' : config.locale }}</strong>
-        </article>
+      @if (activeCheckout; as active) {
+        @for (item of active.cartSnapshot; track item.productId) {
+          <article>
+            <div class="checkout-line-image">
+              @if (item.image; as image) {<img [src]="image.src" [alt]="image.alt" width="110" height="90" />} @else {<i class="uil uil-image-v" aria-hidden="true"></i>}
+            </div>
+            <div><strong>{{ item.name || 'Saved product' }}</strong><span>Qty: {{ item.quantity }}</span></div>
+            @if (snapshotLineTotal(item); as total) {
+              <strong>{{ total | currency: (item.currency || config.currencyCode) : 'symbol-narrow' : '1.2-2' : config.locale }}</strong>
+            }
+          </article>
+        }
+      } @else {
+        @for (line of lines; track line.product.id) {
+          <article>
+            <div class="checkout-line-image">
+              @if (line.product.images[0]; as image) {<img [src]="image.src" [alt]="image.alt" width="110" height="90" />} @else {<i class="uil uil-image-v" aria-hidden="true"></i>}
+            </div>
+            <div><strong>{{ line.product.name }}</strong><span>Qty: {{ line.quantity }}</span></div>
+            <strong>{{ lineTotal(line) | currency: line.product.currency : 'symbol-narrow' : '1.2-2' : config.locale }}</strong>
+          </article>
+        }
       }
     </div>
-    <div class="summary-row"><span>Items</span><strong>{{ itemCount }}</strong></div>
+    <div class="summary-row"><span>Items</span><strong>{{ activeCheckout ? activeItemCount : itemCount }}</strong></div>
     <div class="summary-row"><span>Delivery fee</span><span>Confirmed separately</span></div>
-    <div class="summary-total"><strong>Product total</strong><strong>{{ pesewasToCedis(subtotalPesewas) | currency: config.currencyCode : 'symbol-narrow' : '1.2-2' : config.locale }}</strong></div>
+    <div class="summary-total">
+      <strong>Product total</strong>
+      <strong>{{ pesewasToCedis(activeCheckout ? activeAmountPesewas : subtotalPesewas) | currency: config.currencyCode : 'symbol-narrow' : '1.2-2' : config.locale }}</strong>
+    </div>
 
-    @if (blockedItemCount > 0) {
+    @if (activeCheckout && !activeCartMatches) {
+      <p class="checkout-context-note" role="status">Your current cart is different. Those changes are not part of this payment and will remain for a later purchase.</p>
+    }
+
+    @if (!activeCheckout && blockedItemCount > 0) {
       <p class="checkout-warning" role="alert">{{ blockedItemCount }} unavailable {{ blockedItemCount === 1 ? 'item is' : 'items are' }} blocking checkout. Remove {{ blockedItemCount === 1 ? 'it' : 'them' }} above.</p>
     }
 
@@ -65,13 +97,17 @@
         <p>Your submitted cart showed {{ pesewasToCedis(submittedAmountPesewas) | currency: config.currencyCode : 'symbol-narrow' : '1.2-2' : config.locale }}, while the current server total is {{ pesewasToCedis(session.amountPesewas) | currency: session.currency : 'symbol-narrow' : '1.2-2' : config.locale }}.</p>
         <button class="button button-primary" type="button" (click)="continueToPaystack()">Accept total and continue</button>
       </section>
-    } @else if (checkoutService.pending()?.session?.payment && checkoutService.pending()?.session?.paymentStatus === 'pending') {
-      <button class="button button-primary checkout-submit" type="button" (click)="resumeInitializedCheckout()">
-        <i class="uil uil-lock" aria-hidden="true"></i>Continue to Paystack
+    } @else if (activeCheckout?.session?.paymentStatus === 'pending' && activeCheckout?.session?.payment) {
+      <button class="button button-primary checkout-submit" type="button" [disabled]="submitting" (click)="resumeInitializedCheckout()">
+        <i class="uil uil-lock" aria-hidden="true"></i>{{ submitting ? 'Checking payment...' : 'Check and continue to Paystack' }}
       </button>
-    } @else if (checkoutService.pending() && !checkoutService.pending()?.session) {
+    } @else if (activeCheckout && !activeCheckout.session) {
       <button class="button button-primary checkout-submit" type="button" [disabled]="submitting" (click)="retryCheckout()">
-        <i class="uil uil-lock" aria-hidden="true"></i>{{ submitting ? 'Connecting to Paystack...' : 'Try Paystack again' }}
+        <i class="uil uil-lock" aria-hidden="true"></i>{{ submitting ? 'Connecting to Paystack...' : 'Try this payment again' }}
+      </button>
+    } @else if (activeCheckout) {
+      <button class="button button-primary checkout-submit" type="button" (click)="viewPaymentStatus()">
+        View payment status
       </button>
     } @else {
       <button class="button button-primary checkout-submit" type="submit" [disabled]="submitting || blockedItemCount > 0 || !lines.length">
@@ -81,9 +117,7 @@
 
     @if (submitted && checkoutForm.invalid) {<p class="status-message error" role="alert">Check the highlighted customer details.</p>}
     @if (errorMessage) {
-      <div class="checkout-error" role="alert">
-        <p>{{ errorMessage }}</p>
-      </div>
+      <div class="checkout-error" role="alert"><p>{{ errorMessage }}</p></div>
     }
 
     <div class="payment-next"><i class="uil uil-shield-check" aria-hidden="true"></i><div><strong>Secure payment handoff</strong><p>Paystack collects payment details. Kawama does not receive or store your card information.</p></div></div>
