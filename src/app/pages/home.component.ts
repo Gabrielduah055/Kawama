@@ -1,26 +1,42 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
-import { Category, Product } from '../core/store.models';
+import { catchError, forkJoin, map, of } from 'rxjs';
+import { Category, Product, Review } from '../core/store.models';
 import { STOREFRONT_CONFIG } from '../core/storefront.config';
-import { CatalogRepository } from '../services/catalog.service';
+import { CartService } from '../services/cart.service';
+import { CatalogRepository, CatalogService } from '../services/catalog.service';
+import { ReviewService } from '../services/review.service';
 import { LoadingSpinnerComponent } from '../shared/loading-spinner.component';
 import { ProductCardComponent } from '../shared/product-card.component';
 
+interface ReviewHighlight {
+  readonly product: Product;
+  readonly review: Review;
+}
+
 @Component({
   standalone: true,
-  imports: [CommonModule, RouterLink, ProductCardComponent, LoadingSpinnerComponent],
+  imports: [CommonModule, FormsModule, RouterLink, ProductCardComponent, LoadingSpinnerComponent],
   templateUrl: './home.component.html',
 })
 export class HomeComponent implements OnInit {
   products: readonly Product[] = [];
   categories: readonly Category[] = [];
+  reviewHighlights: readonly ReviewHighlight[] = [];
   loading = true;
   loadError = false;
+  searchQuery = '';
+  activeCategory = 'All';
   readonly config = STOREFRONT_CONFIG;
 
-  constructor(private readonly catalogRepository: CatalogRepository) {}
+  constructor(
+    readonly cart: CartService,
+    private readonly catalogRepository: CatalogRepository,
+    private readonly catalogService: CatalogService,
+    private readonly reviewService: ReviewService,
+  ) {}
 
   ngOnInit(): void {
     this.load();
@@ -37,6 +53,7 @@ export class HomeComponent implements OnInit {
         this.products = products;
         this.categories = categories;
         this.loading = false;
+        this.loadReviewHighlights(products);
       },
       error: () => {
         this.loading = false;
@@ -49,8 +66,56 @@ export class HomeComponent implements OnInit {
     return this.products.filter((product) => product.featured && product.inStock).slice(0, 4);
   }
 
-  get exploreProducts(): readonly Product[] {
-    const featuredIds = new Set(this.featuredProducts.map((product) => product.id));
-    return this.products.filter((product) => product.inStock && !featuredIds.has(product.id)).slice(0, 4);
+  get categoryNames(): readonly string[] {
+    return ['All', ...this.categories.map((category) => category.name)];
+  }
+
+  get catalogProducts(): readonly Product[] {
+    return [...this.catalogService.search(this.products, this.searchQuery, this.activeCategory)].sort(
+      (first, second) => Number(second.inStock) - Number(first.inStock) || Number(second.featured) - Number(first.featured),
+    );
+  }
+
+  get recommendations(): readonly Product[] {
+    return this.catalogService.recommend(
+      this.products,
+      undefined,
+      this.cart.items().map((item) => item.productId),
+      4,
+    );
+  }
+
+  get recommendationContext(): string {
+    return this.cart.itemCount()
+      ? 'Selected to complement products already in your cart.'
+      : 'A useful starting point from the current featured collection.';
+  }
+
+  resetCatalogFilters(): void {
+    this.searchQuery = '';
+    this.activeCategory = 'All';
+  }
+
+  private loadReviewHighlights(products: readonly Product[]): void {
+    const candidates = products.filter((product) => product.inStock).slice(0, 6);
+    if (!candidates.length) return;
+
+    forkJoin(
+      candidates.map((product) =>
+        this.reviewService.getByProductId(product.id).pipe(
+          map((reviews) => reviews.map((review) => ({ product, review }))),
+          catchError(() => of([] as readonly ReviewHighlight[])),
+        ),
+      ),
+    ).subscribe((groups) => {
+      this.reviewHighlights = groups
+        .flat()
+        .sort(
+          (first, second) =>
+            second.review.rating - first.review.rating ||
+            second.review.createdAt.localeCompare(first.review.createdAt),
+        )
+        .slice(0, 3);
+    });
   }
 }

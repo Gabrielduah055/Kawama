@@ -45,6 +45,7 @@ export class CartService {
 
   private update(items: readonly CartItem[]): void {
     this.itemsState.set(items);
+    if (typeof localStorage === 'undefined') return;
     try {
       localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
     } catch {
@@ -53,6 +54,7 @@ export class CartService {
   }
 
   private readStoredCart(): readonly CartItem[] {
+    if (typeof localStorage === 'undefined') return [];
     try {
       const parsed: unknown = JSON.parse(localStorage.getItem(CART_STORAGE_KEY) ?? '[]');
       if (!Array.isArray(parsed)) return [];

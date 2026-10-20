@@ -47,7 +47,7 @@ export class CheckoutComponent implements OnInit {
       next: (products) => {
         this.products = products;
         this.loading = false;
-        const validIds = new Set(products.map((product) => product.id));
+        const validIds = new Set(products.filter((product) => product.inStock).map((product) => product.id));
         this.cart.items().filter((item) => !validIds.has(item.productId)).forEach((item) => this.cart.remove(item.productId));
       },
       error: () => {
@@ -70,12 +70,14 @@ export class CheckoutComponent implements OnInit {
 
   checkout(): void {
     this.submitted = true;
-    if (this.checkoutForm.invalid || !this.lines.length) {
+    if (this.checkoutForm.invalid || !this.lines.length || !this.config.whatsappNumber) {
       this.checkoutForm.markAllAsTouched();
       return;
     }
     const customer: CheckoutDetails = this.checkoutForm.getRawValue();
     const order: OrderDraft = { lines: this.lines, customer, subtotal: this.subtotal };
-    window.open(this.whatsapp.buildUrl(order), '_blank', 'noopener,noreferrer');
+    if (typeof window !== 'undefined') {
+      window.open(this.whatsapp.buildUrl(order), '_blank', 'noopener,noreferrer');
+    }
   }
 }

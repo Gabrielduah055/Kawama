@@ -1,24 +1,40 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { OrderLine, Product } from '../core/store.models';
+import { CheckoutDetails, OrderDraft, OrderLine, Product } from '../core/store.models';
 import { STOREFRONT_CONFIG } from '../core/storefront.config';
 import { CartService } from '../services/cart.service';
 import { CatalogRepository } from '../services/catalog.service';
+import { WhatsAppService } from '../services/whatsapp.service';
 import { LoadingSpinnerComponent } from '../shared/loading-spinner.component';
 
 @Component({
   standalone: true,
-  imports: [CommonModule, RouterLink, LoadingSpinnerComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, LoadingSpinnerComponent],
   templateUrl: './cart.component.html',
 })
 export class CartComponent implements OnInit {
   products: readonly Product[] = [];
   loading = true;
   loadError = false;
+  submitted = false;
   readonly config = STOREFRONT_CONFIG;
+  readonly checkoutForm;
 
-  constructor(readonly cart: CartService, private readonly catalog: CatalogRepository) {}
+  constructor(
+    readonly cart: CartService,
+    private readonly catalog: CatalogRepository,
+    private readonly whatsapp: WhatsAppService,
+    formBuilder: FormBuilder,
+  ) {
+    this.checkoutForm = formBuilder.nonNullable.group({
+      customerName: ['', [Validators.required, Validators.minLength(2)]],
+      phone: ['', [Validators.required, Validators.pattern(/^[+0-9][0-9\s-]{7,19}$/)]],
+      deliveryAddress: ['', [Validators.required, Validators.minLength(4)]],
+      note: ['', [Validators.maxLength(300)]],
+    });
+  }
 
   ngOnInit(): void {
     this.load();
@@ -31,7 +47,7 @@ export class CartComponent implements OnInit {
       next: (products) => {
         this.products = products;
         this.loading = false;
-        const validIds = new Set(products.map((product) => product.id));
+        const validIds = new Set(products.filter((product) => product.inStock).map((product) => product.id));
         this.cart.items().filter((item) => !validIds.has(item.productId)).forEach((item) => this.cart.remove(item.productId));
       },
       error: () => {
@@ -54,5 +70,19 @@ export class CartComponent implements OnInit {
 
   adjust(line: OrderLine, delta: number): void {
     this.cart.setQuantity(line.product.id, line.quantity + delta);
+  }
+
+  checkout(): void {
+    this.submitted = true;
+    if (this.checkoutForm.invalid || !this.lines.length || !this.config.whatsappNumber) {
+      this.checkoutForm.markAllAsTouched();
+      return;
+    }
+
+    const customer: CheckoutDetails = this.checkoutForm.getRawValue();
+    const order: OrderDraft = { lines: this.lines, customer, subtotal: this.subtotal };
+    if (typeof window !== 'undefined') {
+      window.open(this.whatsapp.buildUrl(order), '_blank', 'noopener,noreferrer');
+    }
   }
 }
