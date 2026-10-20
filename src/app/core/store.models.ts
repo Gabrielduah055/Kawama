@@ -80,3 +80,76 @@ export interface OrderDraft {
   readonly customer: CheckoutDetails;
   readonly subtotal: number;
 }
+
+export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded' | 'needs_attention';
+
+export type FulfillmentStatus =
+  | 'awaiting_payment'
+  | 'paid_awaiting_delivery'
+  | 'processing'
+  | 'out_for_delivery'
+  | 'delivered'
+  | 'cancelled'
+  | 'needs_attention';
+
+export type DeliveryFeeStatus = 'not_quoted' | 'quoted' | 'collected' | 'waived';
+
+export interface CheckoutCustomer {
+  readonly fullName: string;
+  readonly email: string;
+  readonly whatsappNumber: string;
+  readonly deliveryAddress: string;
+  readonly whatsappConsent: true;
+}
+
+export interface CheckoutRequestItem {
+  readonly productId: string;
+  readonly quantity: number;
+}
+
+export interface CheckoutCreateRequest {
+  readonly customer: CheckoutCustomer;
+  readonly orderNotes?: string;
+  readonly items: readonly CheckoutRequestItem[];
+}
+
+export interface CheckoutPayment {
+  readonly reference: string;
+  readonly accessCode: string;
+  readonly authorizationUrl: string;
+}
+
+export interface CheckoutSession {
+  readonly created: boolean;
+  readonly checkoutToken: string;
+  readonly orderNumber: string;
+  readonly paymentStatus: PaymentStatus;
+  readonly fulfillmentStatus: FulfillmentStatus;
+  readonly amountPesewas: number;
+  readonly currency: 'GHS';
+  readonly payment?: CheckoutPayment;
+}
+
+export interface CheckoutStatus {
+  readonly orderNumber: string;
+  readonly paymentStatus: PaymentStatus;
+  readonly fulfillmentStatus: FulfillmentStatus;
+  readonly deliveryFeeStatus: DeliveryFeeStatus;
+  readonly amountPesewas: number;
+  readonly currency: 'GHS';
+  readonly receipt?: {
+    readonly number?: string;
+    readonly url?: string;
+  };
+}
+
+export interface PendingCheckout {
+  readonly version: 1;
+  readonly idempotencyKey: string;
+  readonly request: CheckoutCreateRequest;
+  readonly cartSnapshot: readonly CheckoutRequestItem[];
+  readonly expectedAmountPesewas: number;
+  readonly createdAt: string;
+  readonly session?: CheckoutSession;
+  readonly reconciled: boolean;
+}

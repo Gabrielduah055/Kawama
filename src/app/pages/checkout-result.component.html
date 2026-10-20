@@ -1,0 +1,79 @@
+<div class="checkout-result-page page-shell">
+  <nav class="breadcrumb" aria-label="Breadcrumb"><a routerLink="/">Home</a><span>/</span><a routerLink="/cart">Cart</a><span>/</span><span>Payment status</span></nav>
+
+  <section class="checkout-result-card" [attr.data-state]="state" aria-live="polite">
+    @switch (state) {
+      @case ('loading') {
+        <div class="result-icon pending" aria-hidden="true"><i class="uil uil-spinner-alt"></i></div>
+        <p class="section-label">Secure status check</p>
+        <h1>Confirming your payment</h1>
+        <p>We are checking Kawama's secure order record. You can keep this page open.</p>
+      }
+      @case ('paid') {
+        <div class="result-icon paid" aria-hidden="true"><i class="uil uil-check"></i></div>
+        <p class="section-label">Payment confirmed</p>
+        <h1>Your order is paid</h1>
+        <p>Kawama has confirmed the payment from the backend. Your purchased quantities have been removed from this cart.</p>
+      }
+      @case ('pending') {
+        <div class="result-icon pending" aria-hidden="true"><i class="uil uil-clock"></i></div>
+        <p class="section-label">Payment pending</p>
+        <h1>We are still waiting for confirmation</h1>
+        <p>Paystack may still be processing the payment or the secure webhook may still be arriving. Do not pay again yet.</p>
+      }
+      @case ('failed') {
+        <div class="result-icon failed" aria-hidden="true"><i class="uil uil-times"></i></div>
+        <p class="section-label">Payment not completed</p>
+        <h1>This checkout can no longer be paid</h1>
+        <p>No paid status was recorded. Return to the cart to review the items before starting a new checkout.</p>
+      }
+      @case ('refunded') {
+        <div class="result-icon attention" aria-hidden="true"><i class="uil uil-history"></i></div>
+        <p class="section-label">Payment refunded</p>
+        <h1>This payment was refunded</h1>
+        <p>The order record shows a refund. Contact Kawama if you need help with the refund or delivery status.</p>
+      }
+      @case ('needs_attention') {
+        <div class="result-icon attention" aria-hidden="true"><i class="uil uil-exclamation-triangle"></i></div>
+        <p class="section-label">Manual review needed</p>
+        <h1>Your payment needs attention</h1>
+        <p>The secure order record needs a Kawama team member to review it. Do not submit another payment.</p>
+      }
+      @case ('network') {
+        <div class="result-icon attention" aria-hidden="true"><i class="uil uil-wifi-slash"></i></div>
+        <p class="section-label">Connection interrupted</p>
+        <h1>We could not refresh the payment status</h1>
+        <p>No payment result has been assumed. Check your connection and retry the secure status request.</p>
+      }
+      @case ('missing_context') {
+        <div class="result-icon attention" aria-hidden="true"><i class="uil uil-shield-exclamation"></i></div>
+        <p class="section-label">Payment details unavailable</p>
+        <h1>We cannot verify a payment from this page</h1>
+        <p>We could not find a Paystack payment started in this browser. Return to the cart and try again.</p>
+      }
+    }
+
+    @if (orderNumber) {
+      <dl class="result-order-details">
+        <div><dt>Order number</dt><dd>{{ orderNumber }}</dd></div>
+        @if (status) {
+          <div><dt>Product total</dt><dd>{{ pesewasToCedis(status.amountPesewas) | currency: status.currency : 'symbol-narrow' : '1.2-2' : config.locale }}</dd></div>
+          <div><dt>Delivery fee</dt><dd>{{ status.deliveryFeeStatus === 'not_quoted' ? 'Not quoted yet' : status.deliveryFeeStatus.replace('_', ' ') }}</dd></div>
+        }
+      </dl>
+    }
+
+    <div class="result-actions">
+      @if (state === 'pending' || state === 'network') {
+        <button class="button button-primary" type="button" (click)="checkStatus()">Check now</button>
+      }
+      @if (state === 'paid' && whatsappUrl) {
+        <a class="button button-primary" [href]="whatsappUrl" target="_blank" rel="noopener"><i class="uil uil-whatsapp" aria-hidden="true"></i>Coordinate delivery</a>
+      }
+      @if (status?.receipt?.url) {
+        <a class="button button-outline" [href]="status?.receipt?.url" target="_blank" rel="noopener">Open receipt</a>
+      }
+      <a class="button button-outline" [routerLink]="state === 'paid' ? '/shop' : '/cart'">{{ state === 'paid' ? 'Continue shopping' : 'Return to cart' }}</a>
+    </div>
+  </section>
+</div>

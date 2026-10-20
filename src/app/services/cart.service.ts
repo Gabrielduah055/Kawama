@@ -2,6 +2,7 @@ import { computed, Injectable, signal } from '@angular/core';
 import { CartItem } from '../core/store.models';
 
 const CART_STORAGE_KEY = 'kawama.cart.v1';
+const RECONCILED_CHECKOUTS_STORAGE_KEY = 'kawama.cart.reconciled.v1';
 const MAX_QUANTITY = 20;
 
 @Injectable({ providedIn: 'root' })
@@ -43,6 +44,19 @@ export class CartService {
     this.update([]);
   }
 
+  reconcilePurchasedItems(checkoutToken: string, purchasedItems: readonly CartItem[]): boolean {
+    if (!checkoutToken || this.reconciledCheckoutTokens().has(checkoutToken)) return false;
+
+    const purchasedQuantities = new Map(purchasedItems.map((item) => [item.productId, item.quantity]));
+    const next = this.itemsState().flatMap((item) => {
+      const remaining = item.quantity - (purchasedQuantities.get(item.productId) ?? 0);
+      return remaining > 0 ? [{ ...item, quantity: remaining }] : [];
+    });
+    this.update(next);
+    this.recordReconciledCheckout(checkoutToken);
+    return true;
+  }
+
   private update(items: readonly CartItem[]): void {
     this.itemsState.set(items);
     if (typeof localStorage === 'undefined') return;
@@ -70,6 +84,26 @@ export class CartService {
         .map((item) => ({ ...item, quantity: Math.min(item.quantity, MAX_QUANTITY) }));
     } catch {
       return [];
+    }
+  }
+
+  private reconciledCheckoutTokens(): ReadonlySet<string> {
+    if (typeof localStorage === 'undefined') return new Set();
+    try {
+      const parsed: unknown = JSON.parse(localStorage.getItem(RECONCILED_CHECKOUTS_STORAGE_KEY) ?? '[]');
+      return new Set(Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string') : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  private recordReconciledCheckout(checkoutToken: string): void {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const tokens = [...this.reconciledCheckoutTokens(), checkoutToken].slice(-50);
+      localStorage.setItem(RECONCILED_CHECKOUTS_STORAGE_KEY, JSON.stringify(tokens));
+    } catch {
+      // The cart is already reconciled in memory if storage becomes unavailable.
     }
   }
 }

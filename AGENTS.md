@@ -1,149 +1,127 @@
-# Kawama Storefront Agent Guide
+Kawama Storefront Agent Guide
+Purpose and scope
+Kawama is a guest-shopping storefront for home and kitchen products in Ghana. Customers discover products, build a persistent cart, pay for products through the Paystack integration, and coordinate delivery with the business through WhatsApp.
 
-## Project overview
+This repository owns the customer experience. Backend APIs live in kawama-admin-backend; administration screens belong in kawamaAdmin-frontend.
 
-Kawama is a modern, mobile-first home and kitchen e-commerce storefront for customers in Ghana. It brings product discovery, guided browsing, useful recommendations, cart management, sharing, and customer reviews into one calm shopping experience. Shoppers hand a completed order to the business through WhatsApp, where payment, delivery fees, and final confirmation happen.
+Online product payments and a payment-result page are explicitly in scope. Do not reintroduce the old restriction against storefront payment integration. Keep administration, staff authentication, inventory administration, marketing automation and AI agents outside this repository unless the user requests them.
 
-This repository contains only the customer-facing storefront. The administration site will be created as a separate project. Do not add admin dashboards, product management, authentication, online payments, inventory administration, or order tracking here unless the user explicitly expands the scope.
+The catalog, review and backend-first Paystack checkout connections exist. The cart owns the payment form, `/checkout` redirects to it, and `/checkout/result` verifies the saved session against backend status. Confirm implementation status from source and keep these instructions current as work lands. Requirements below describe intended behavior, not a claim that every feature is implemented.
+Stack and repository map
+- Angular 19 standalone components, Angular Router, reactive forms and RxJS.
+- Strict TypeScript and Tailwind CSS 4 through the existing PostCSS setup.
+- Existing CSS design tokens, Montserrat typography, white/cream surfaces and orange/red primary accent. Preserve the current design rather than introducing a new theme.
+- npm and the committed package-lock.json.
+Location	Responsibility
+src/app/pages	Route components and templates
+src/app/shared	Reusable UI
+src/app/services	HTTP repositories, cart, sharing and browser integrations
+src/app/core	Domain models, endpoint helpers and storefront configuration
+src/environments	API base URLs and centralized endpoint templates
+src/styles	Shared layout and visual styles
+src/app/data	Sample fixtures; not the live catalog or source of genuine reviews
 
-## Product vision
 
-Home and kitchen marketplaces often feel crowded, poorly categorized, and difficult to trust. Kawama should reduce that friction with clear product groupings, focused product information, relevant recommendations, and an uncomplicated path from discovery to ordering.
+Preserve repository structure and unrelated changes. Prefer existing Angular/browser capabilities over new dependencies.
+Customer journeys
+- /: categories, featured products, searchable catalog, recommendations, approved review highlights and support links.
+- /shop: search, category filtering and sorting.
+- /product/:slug: images, details, specifications, precise prices, availability, reviews, quantity controls and sharing.
+- /cart: persistent items, editable quantities, subtotal and the primary checkout experience.
+- /checkout: reuse the same checkout implementation or route to it; do not maintain independent payment forms.
+- /checkout/result: add during payment integration, before the wildcard route.
+- /review/:slug: validated review submission for moderation.
+- /contact and a friendly not-found experience.
+Use stable product/review slugs. Use Angular router fragments or explicit scrolling for in-page navigation: bare fragment links can resolve against the root base URL and leave the current route.
+Backend contract
+Treat current backend source, validation schemas, controllers and OpenAPI as authoritative. Inspect them before implementing integrations. Do not invent endpoints or response fields.
 
-The primary audience is a mobile shopper who wants to understand an item quickly, compare a small number of sensible options, and place an order without creating an account. Every design and engineering choice should make that journey faster and clearer.
+Use environment.apiBaseUrl and the existing endpoint-building helpers. The configured base already includes /api/v1; endpoint templates are relative:
+Method	Path	Purpose
+GET	/products	Paginated catalog
+GET	/products/:slug	Product details
+GET	/categories	Managed categories
+GET	/products/:productId/reviews	Approved reviews
+POST	/products/:productId/reviews	Submit a pending review
+POST	/checkout/sessions	Initialize a product-payment checkout
+GET	/checkout/sessions/:checkoutToken	Read server payment/fulfillment status
 
-Success means that a first-time visitor can:
 
-- Understand what Kawama sells from the first screen
-- Reach a relevant category or product with minimal effort
-- Judge a product from useful imagery, price, availability, details, and reviews
-- Add, edit, and review an order without confusion
-- Continue to WhatsApp with an accurate, readable order summary
-- Return later without losing the cart
+Catalog lists provide data and meta.page, meta.limit, meta.total. Normal responses wrap payloads in data. Errors use error.code, error.message, optional error.details and error.requestId.
 
-## Technology
+The backend currently has no public product-by-ID lookup, aggregate review-highlights endpoint, payment verification-by-reference endpoint or checkout-cancellation endpoint. Request a deliberate API addition when needed; do not code against an imagined route.
 
-- Angular 19 with standalone components and Angular Router
-- TypeScript with strict compiler settings
-- Tailwind CSS 4 through PostCSS
-- Browser `localStorage` for the temporary cart and locally submitted demo reviews
-- No backend is connected yet; use asynchronous repository-style services so local data can later be replaced by HTTP implementations
+Checkout POST requires an Idempotency-Key header and this shape:
+{
+  customer: {
+    fullName: string;
+    email: string;
+    whatsappNumber: string;
+    deliveryAddress: string;
+    whatsappConsent: true;
+  };
+  orderNotes?: string;
+  items: { productId: string; quantity: number }[];
+}
+Use actual MongoDB product IDs returned by the API. Send no prices, subtotal, currency, provider reference or unrelated client fields; the backend calculates the charge.
 
-Preserve the existing Angular project structure, package manager, lockfile, and Tailwind setup. Avoid new dependencies unless they provide a clear requirement that cannot be met cleanly with Angular or browser APIs.
+Match backend validation: trimmed name 2–120 characters; valid email up to 254; supported Ghana local or international WhatsApp number; address 5–500; optional notes up to 500; 1–20 unique product lines with integer quantities 1–20. Consent is explicit and unchecked by default.
 
-## Required customer journeys
+A new checkout returns 201; an idempotent replay can return 200. data includes created, checkoutToken, orderNumber, paymentStatus, fulfillmentStatus, amountPesewas, currency and optional payment with reference, accessCode, authorizationUrl.
 
-The storefront should provide these routes and behaviors:
+Status data includes orderNumber, paymentStatus, fulfillmentStatus, deliveryFeeStatus, amountPesewas, currency and optional receipt.number/receipt.url. It does not contain customer details, product lines or a payment URL. Keep payment, fulfillment and delivery status types separate.
+Payment and delivery rules
+- Product payment uses Paystack. Delivery is quoted separately and paid on delivery. Label the payable product amount clearly; an unquoted fee is not zero.
+- Prefer the returned authorizationUrl for hosted, same-tab checkout. This path needs no Paystack browser SDK or public key. Secrets stay on the backend.
+- The backend's signed webhook and provider verification determine payment success. Redirects, callback query parameters, local flags and browser callbacks are not payment proof.
+- Generate a cryptographically random idempotency key, bind it to the submitted snapshot, and safely persist pending state before leaving the site. The current backend uses this key as checkoutToken.
+- Retries after uncertain network outcomes reuse the same key and exact payload. Do not silently create a replacement charge or reuse an old key for changed details.
+- Recover pending state on return/reload. Reference/trxref callback parameters are not checkout tokens. Missing context needs an honest recovery state.
+- Recheck the status endpoint. Use bounded polling with teardown and a manual recheck option. A polling timeout means confirmation is pending.
+- Handle pending, paid, failed, refunded, needs_attention, expired checkout and network errors explicitly. Returning from Paystack without paying does not cancel a server reservation.
+- Only backend-confirmed paid status triggers confirmation and cart reconciliation. Remove purchased snapshot quantities once, preserving unrelated or subsequently added items.
+- Resume an existing checkout instead of treating its own reserved stock as an unavailable new purchase.
+- A blank business WhatsApp number must not block Paystack payment. Hide/disable only optional contact actions.
+- After payment, WhatsApp coordinates delivery using the public order number. It must not submit a second purchase request or expose checkout tokens.
+- Show receipt links only when supplied by the API. Do not promise automatic receipts, messages or delivery dates without implemented services.
+Document PAYSTACK_CALLBACK_URL for the storefront result route and /api/v1/webhooks/paystack as the backend webhook path. Do not call the webhook from Angular or place the Paystack secret key in browser configuration.
+Catalog, cart and money
+Page components depend on repository services rather than importing sample records as live data.
 
-- `/`: storefront catalog with featured products, keyword search, category filters, and responsive product cards
-- `/product/:slug`: product images, description, price, availability, rating summary, reviews, cart action, share action, and review link
-- `/cart`: editable quantities, item removal, subtotal, customer details, and WhatsApp checkout
-- `/review/:slug`: dedicated 1–5 star product review form with customer name, comment, validation, and success state
-- A friendly not-found experience for invalid routes and unknown product slugs
+Do not treat the first catalog page as the complete inventory. Load required pages using metadata, bounded concurrency and deduplication, or implement deliberate browsing pagination with separate cart resolution. Do not publish partial failures as a complete empty catalog.
 
-The cart must survive a page reload. Treat malformed or obsolete local data as an empty/default state rather than allowing the application to crash.
+Retain unavailable/unresolved saved items with an explanation and explicit removal action. Never silently remove a valid cart item because it was absent from one API page. Block a new payment until invalid lines are resolved, and let server validation make the final price/stock decision.
 
-The landing page should form one coherent discovery journey rather than a collection of unrelated marketing sections. Use this order as the default:
+Guard localStorage, sessionStorage, window, navigator and clipboard access. Handle corrupt storage without crashing. Keep business calculations in services or pure utilities.
 
-1. Compact header with Kawama identity, navigation, search, and cart status
-2. Lifestyle-led hero with a direct shopping action
-3. Visual category cards for common kitchen needs
-4. New arrivals or featured product rail
-5. Short editorial brand banner that explains Kawama's product promise
-6. Main product catalog with search, category filtering, and clear product cards
-7. Service reassurance focused on ordering support and delivery coordination
-8. Recommendations derived from viewed categories and current cart contents
-9. Genuine customer review highlights when review data is available
-10. Focused promotional callout and a useful footer with configured contact/social links
+Product.price is expressed in cedis; payment amounts ending in Pesewas are integer pesewas. Use integer arithmetic for client totals and convert exactly once for display. Show consistent two-decimal GHS prices across cards, details, cart, checkout and WhatsApp. Never replace the server-calculated payable amount with a client calculation.
+Reviews, recommendations and sharing
+Reviews come from the API, submissions await moderation, and ratings derive from approved records. Do not publish submitted reviews locally as if already approved.
 
-Do not show fabricated audience counts, delivery promises, discounts, guarantees, testimonials, or trust claims. Benefits and promotions must come from configuration or real product data.
+Homepage highlights must not conclude there are no reviews after inspecting only six products. Use existing review endpoints with bounded/cached background work until enough highlights are found or the relevant catalog is exhausted. Handle failures and cancel abandoned work. Do not claim global recency from a partial sample.
 
-WhatsApp checkout must validate the customer's name, phone number, and delivery area/address. The generated message must include products, quantities, individual prices, subtotal, customer details, optional notes, and a statement that delivery charges will be confirmed in chat. Use an international-format number from centralized configuration and URL-encode the message.
+Recommendations are deterministic: prioritize matching/complementary categories, exclude unavailable products, the selected product and products already in the cart, then fall back to featured products. Do not label them AI-powered.
 
-Product sharing should use the native Web Share API when available and fall back to copying the canonical product URL to the clipboard. Always show useful success or failure feedback.
+Use native Web Share when available, clipboard fallback on unsupported/failed sharing, and useful feedback. Respect a cancelled share without forcing a copy.
 
-Recommendations in this client-only version should be deterministic and explainable. Prefer products that share a category with the current product or complement items in the cart, exclude unavailable products and the current item, and fall back to featured products. Do not claim that recommendations are AI-powered or personally profiled until a real recommendation service exists.
+Do not fabricate reviews, discounts, audience counts, guarantees or delivery promises.
+UI and implementation quality
+Preserve the current homepage hierarchy and product presentation. Keep mobile and desktop layouts intentional, including touch/keyboard-scrollable product rails.
 
-## Domain and data boundaries
+Use semantic buttons/links, labels, visible focus, meaningful alternative text, stable image dimensions and loading/empty/error/success states. Aim for 44px touch targets, readable text, reduced-motion support and no horizontal page overflow at narrow widths or enlarged text.
 
-Keep explicit TypeScript models for:
+Prefer small standalone components, shared checkout logic, reactive forms and typed models. Clean up subscriptions, pending requests and polling. Keep contact/social links centralized in storefront configuration and hide missing optional links.
+Verification and handoff
+For implementation changes, run the relevant checks:
+npm run build
+npx tsc -p tsconfig.spec.json --noEmit
+npm test -- --watch=false --browsers=ChromeHeadlessNoSandbox
+The custom headless launcher is defined in karma.conf.cjs and needs an available Chrome binary; use CHROME_BIN when appropriate. Report environment blocks separately from test failures. A successful build or type check does not mean browser tests or payment verification passed.
 
-- `Product`
-- `Review`
-- `CartItem`
-- `CheckoutDetails`
-- `OrderDraft`
+Test meaningful affected behavior: pagination beyond 100 products; cart persistence and unavailable items; decimal money; fragment navigation; review moderation/highlights; recommendation exclusions; sharing fallback; exact checkout payloads; duplicate submits; idempotent retries; return/reload recovery; forged callback parameters; delayed payment confirmation; polling cleanup; and paid-cart reconciliation.
 
-Product data includes an ID, stable slug, name, category, description, price in Ghanaian cedi, images, stock availability, featured state, and review information.
+Use mocked HTTP for deterministic tests and Paystack test mode for configured end-to-end checks. Do not make live charges during development verification. Check mobile/desktop and keyboard behavior when UI changes.
 
-Support lightweight merchandising fields where the interface uses them, such as `isNew`, an optional compare-at price, compatible/complementary category IDs, and a short product-detail list. Never infer a discount that is not present in the data.
+For documentation-only changes, check accuracy, links and the diff rather than rerunning unrelated application tests.
 
-Page components should depend on catalog and review repository contracts rather than importing sample records directly. Local adapters may return realistic sample products and reviews now, but their public methods should be asynchronous and easy to replace with API calls later.
-
-Centralize the business name, currency, WhatsApp number, Facebook URL, and Instagram URL in one environment-aware storefront configuration. Do not scatter contact details through templates. Hide missing social links, and do not treat a placeholder WhatsApp number as production-ready.
-
-## Experience and design direction
-
-Design for mobile shoppers first, while keeping desktop layouts intentional. The supplied screens are visual references only: translate their useful principles into Kawama rather than duplicating their copy, exact composition, or unsupported claims.
-
-Use a refined lifestyle-commerce system built around:
-
-- Deep forest green and dark teal as anchoring brand colors
-- Warm cream and clean white backgrounds to keep the catalog calm
-- Charcoal typography with restrained terracotta or warm metallic accents
-- Large editorial kitchen photography paired with clean product cutouts
-- Spacious grids, generous whitespace, rounded category imagery, subtle borders, and pill-shaped filters
-- Bold, modern sans-serif display type balanced by compact, highly readable product metadata
-- Mostly neutral controls with the Kawama green reserved for primary actions and active states
-- Restrained hover, focus, cart, and section-transition motion that also respects reduced-motion preferences
-
-The reference layout suggests a confident lifestyle hero, visual categories, product rails, an editorial brand banner, a dense catalog, reassurance cards, gallery content, reviews, a promotional panel, and a dark footer. Use those as a hierarchy and pacing reference. Keep the final Kawama interface original and ensure the actual commerce journey remains more important than decorative gallery content.
-
-Keep the storefront practical:
-
-- Make the lifestyle hero visually strong but keep its height controlled so products or category entry points remain discoverable without excessive scrolling
-- Use touch targets of at least 44px where practical
-- Keep body text at least 16px and regular interface labels at least 14px
-- Preserve visible keyboard focus and semantic labels
-- Provide meaningful image alternative text and stable image dimensions
-- Support narrow phones, desktop widths, and 200% text enlargement without horizontal overflow
-- Use clear loading, empty, unavailable, error, and success states
-- Use Ghanaian cedi formatting consistently
-- Keep product-card photography consistent in crop, background treatment, and aspect ratio
-- Make filters horizontally scrollable on narrow screens and visibly identify the active state
-- Avoid desktop-only carousel controls; all horizontal product/category rails must support touch scrolling and keyboard operation
-
-Do not add dead links, fake testimonials, unsupported claims, or decorative controls that do not work.
-
-The attached laptop mockup is presentation inspiration, not a page section or an instruction to render the website inside a device frame.
-
-## Implementation conventions
-
-- Prefer small standalone components organized by feature or shared UI responsibility
-- Put business calculations and browser integrations in services or pure utilities, not templates
-- Derive cart totals and review aggregates from source records rather than storing duplicate computed state
-- Cap cart quantities at sensible positive integers and prevent ordering unavailable products
-- Guard all browser-only APIs, including storage, sharing, and clipboard access
-- Use reactive forms for checkout and review validation
-- Keep product and review URLs stable by using slugs
-- Preserve unrelated user changes in the working tree
-- Implement recommendations as a pure, testable selector or service so a future backend recommender can replace it
-- Use real buttons and links for interactive controls; do not use non-semantic containers with click handlers
-- Prefer CSS scroll snapping for short visual rails, but use the normal responsive grid for the full catalog
-
-## Verification
-
-Before considering storefront work complete:
-
-- Test search, category filtering, valid/invalid product navigation, and unavailable products
-- Test recommendation relevance, exclusions, and featured-product fallback
-- Test adding, incrementing, decrementing, removing, emptying, and restoring the cart
-- Test checkout validation and the exact decoded WhatsApp message for single-item and multi-item carts
-- Test native sharing, clipboard fallback, and failure feedback
-- Test review validation, persistence, rating aggregation, and deep links
-- Check keyboard navigation, focus visibility, form labels, contrast, alternative text, mobile overflow, and text enlargement
-- Check horizontal rails with touch, keyboard, reduced motion, and narrow mobile viewports
-- Run focused tests for cart calculations, filtering, review aggregation, and WhatsApp message generation
-- Run `npm run build` and resolve production build failures
-
-The real WhatsApp number, social profiles, logo, and production catalog are launch prerequisites and should be supplied through the centralized configuration/data boundaries rather than hard-coded into individual components.
+Summarize what changed, what was actually verified and any remaining configuration or backend blockers. Backend price validation, concurrent inventory edits, late-payment reservations and scheduled cleanup cannot be fixed by pretending the frontend is authoritative; keep server work explicit.

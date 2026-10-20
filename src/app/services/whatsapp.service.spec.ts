@@ -20,9 +20,9 @@ describe('WhatsAppService', () => {
 
   it('includes every order line, customer detail, and subtotal', () => {
     const message = service.buildMessage(order);
-    expect(message).toContain('2 x GH₵289 = GH₵578');
-    expect(message).toContain('1 x GH₵245 = GH₵245');
-    expect(message).toContain('Subtotal: GH₵823');
+    expect(message).toContain('2 x GH₵289.00 = GH₵578.00');
+    expect(message).toContain('1 x GH₵245.00 = GH₵245.00');
+    expect(message).toContain('Subtotal: GH₵823.00');
     expect(message).toContain('Name: Ama Mensah');
     expect(message).toContain('Delivery area/address: Osu, Accra');
     expect(message).toContain('Notes: Call on arrival');
@@ -51,9 +51,9 @@ describe('WhatsAppService', () => {
         'Hello Kawama, I would like to place this order:',
         '',
         '1. Forge 7pc Knife Set',
-        '   1 x GH₵499 = GH₵499',
+        '   1 x GH₵499.00 = GH₵499.00',
         '',
-        'Subtotal: GH₵499',
+        'Subtotal: GH₵499.00',
         '',
         'Customer details',
         'Name: Kojo Asare',
@@ -63,5 +63,16 @@ describe('WhatsAppService', () => {
         'Please confirm availability and the delivery charge in this chat.',
       ].join('\n'),
     );
+  });
+
+  it('formats decimal product money with exactly two digits', () => {
+    const decimalOrder: OrderDraft = {
+      ...order,
+      lines: [{ product: { ...SAMPLE_PRODUCTS[0], price: 12.35 }, quantity: 3 }],
+      subtotal: 37.05,
+    };
+
+    expect(service.buildMessage(decimalOrder)).toContain('3 x GH₵12.35 = GH₵37.05');
+    expect(service.buildMessage(decimalOrder)).toContain('Subtotal: GH₵37.05');
   });
 });

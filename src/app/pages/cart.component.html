@@ -7,11 +7,11 @@
     <section class="empty-state" role="alert"><h2>We could not refresh your cart.</h2><p class="text-[15px]! font-medium! leading-7! sm:text-base!">Your saved items are still on this device. Try loading the latest product details again.</p><button class="button button-primary" type="button" (click)="load()">Try again</button></section>
   } @else if (loading) {
     <app-loading-spinner label="Loading your cart..." />
-  } @else if (lines.length) {
+  } @else if (cart.items().length) {
     <section class="cart-card" aria-label="Items in your cart">
       <div class="cart-table-head" aria-hidden="true"><span>Product</span><span>Price</span><span>Quantity</span><span>Total</span></div>
       @for (line of lines; track line.product.id) {
-        <article class="cart-line">
+        <article class="cart-line" [class.cart-line-unavailable]="!line.product.inStock">
           <div class="cart-product">
             <a [routerLink]="['/product', line.product.slug]" class="cart-image">
               @if (line.product.images[0]; as image) {
@@ -20,9 +20,9 @@
                 <span class="product-image-placeholder"><i class="uil uil-image-v" aria-hidden="true"></i></span>
               }
             </a>
-            <div><a [routerLink]="['/product', line.product.slug]">{{ line.product.name }}</a><p class="text-sm! font-medium! leading-6!">{{ line.product.shortDescription }}</p></div>
+            <div><a [routerLink]="['/product', line.product.slug]">{{ line.product.name }}</a><p class="text-sm! font-medium! leading-6!">{{ line.product.shortDescription }}</p>@if (!line.product.inStock) {<span class="cart-item-warning">Unavailable for checkout</span>}</div>
           </div>
-          <strong class="cart-unit-price">{{ line.product.price | currency: line.product.currency : 'symbol-narrow' : '1.0-0' : 'en-GH' }}</strong>
+          <strong class="cart-unit-price">{{ line.product.price | currency: line.product.currency : 'symbol-narrow' : '1.2-2' : 'en-GH' }}</strong>
           <div class="cart-quantity-column">
             <div class="quantity-control" [attr.aria-label]="'Quantity for ' + line.product.name">
               <button type="button" aria-label="Decrease quantity" (click)="adjust(line, -1)">−</button>
@@ -31,59 +31,30 @@
             </div>
             <button class="remove-button" type="button" (click)="cart.remove(line.product.id)"><i class="uil uil-trash-alt" aria-hidden="true"></i>Remove</button>
           </div>
-          <strong class="cart-line-total">{{ line.product.price * line.quantity | currency: line.product.currency : 'symbol-narrow' : '1.0-0' : 'en-GH' }}</strong>
+          <strong class="cart-line-total">{{ lineTotal(line) | currency: line.product.currency : 'symbol-narrow' : '1.2-2' : 'en-GH' }}</strong>
+        </article>
+      }
+      @for (item of missingItems; track item.productId) {
+        <article class="cart-line cart-line-unavailable cart-missing-item">
+          <div class="cart-product">
+            <span class="cart-image product-image-placeholder"><i class="uil uil-box" aria-hidden="true"></i></span>
+            <div><strong>Product no longer listed</strong><p>This saved item could not be found in the current catalog.</p><span class="cart-item-warning">Unavailable for checkout</span></div>
+          </div>
+          <span class="cart-unit-price">Unavailable</span>
+          <div class="cart-quantity-column"><span>Qty: {{ item.quantity }}</span><button class="remove-button" type="button" (click)="cart.remove(item.productId)"><i class="uil uil-trash-alt" aria-hidden="true"></i>Remove</button></div>
+          <span class="cart-line-total">Unavailable</span>
         </article>
       }
 
       <div class="cart-footer-row">
         <a class="button button-outline" routerLink="/shop"><i class="uil uil-arrow-left" aria-hidden="true"></i>Continue shopping</a>
         <div class="cart-total-block">
-          <div><span>Subtotal ({{ cart.itemCount() }} {{ cart.itemCount() === 1 ? 'item' : 'items' }})</span><strong>{{ subtotal | currency: config.currencyCode : 'symbol-narrow' : '1.0-0' : config.locale }}</strong></div>
-          <a class="button button-primary" href="#cart-checkout">Add delivery details <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
+          <div><span>Available product total</span><strong>{{ pesewasToCedis(subtotalPesewas) | currency: config.currencyCode : 'symbol-narrow' : '1.2-2' : config.locale }}</strong></div>
         </div>
       </div>
     </section>
 
-    <form id="cart-checkout" class="cart-checkout" [formGroup]="checkoutForm" (ngSubmit)="checkout()" novalidate>
-      <section class="checkout-details-card" aria-labelledby="cart-checkout-title">
-        <h2 id="cart-checkout-title">Delivery details</h2>
-        <p class="text-sm! font-medium! leading-6!">Add the details Kawama needs to prepare your WhatsApp order.</p>
-
-        <label class="form-field">
-          <span>Full name <em>*</em></span>
-          <span class="input-with-icon"><i class="uil uil-user" aria-hidden="true"></i><input type="text" formControlName="customerName" autocomplete="name" placeholder="Enter your full name" /></span>
-          @if (checkoutForm.controls.customerName.touched && checkoutForm.controls.customerName.invalid) {<small class="field-error">Enter at least two characters.</small>}
-        </label>
-        <label class="form-field">
-          <span>Phone number <em>*</em></span>
-          <span class="input-with-icon"><i class="uil uil-phone" aria-hidden="true"></i><input type="tel" formControlName="phone" autocomplete="tel" inputmode="tel" placeholder="Enter your phone number" /></span>
-          @if (checkoutForm.controls.phone.touched && checkoutForm.controls.phone.invalid) {<small class="field-error">Enter a valid phone number.</small>}
-        </label>
-        <label class="form-field">
-          <span>Delivery area / address <em>*</em></span>
-          <span class="input-with-icon textarea-icon"><i class="uil uil-map-marker" aria-hidden="true"></i><textarea rows="4" formControlName="deliveryAddress" autocomplete="street-address" placeholder="Enter your delivery area or full address"></textarea></span>
-          @if (checkoutForm.controls.deliveryAddress.touched && checkoutForm.controls.deliveryAddress.invalid) {<small class="field-error">Enter the delivery area or full address.</small>}
-        </label>
-        <label class="form-field">
-          <span>Order notes <small>(Optional)</small></span>
-          <span class="input-with-icon textarea-icon"><i class="uil uil-file-alt" aria-hidden="true"></i><textarea rows="3" formControlName="note" maxlength="300" placeholder="Preferred delivery time, landmark, or other instructions"></textarea></span>
-        </label>
-      </section>
-
-      <aside class="order-summary-card cart-order-handoff" aria-labelledby="cart-handoff-title">
-        <h2 id="cart-handoff-title">Continue on WhatsApp</h2>
-        <p>Your message will include each product, quantity, price, subtotal, and the delivery details entered here.</p>
-        <div class="summary-row"><span>Items</span><strong>{{ cart.itemCount() }}</strong></div>
-        <div class="summary-row"><span>Delivery fee</span><span>Confirmed in chat</span></div>
-        <div class="summary-total"><strong>Subtotal</strong><strong>{{ subtotal | currency: config.currencyCode : 'symbol-narrow' : '1.0-0' : config.locale }}</strong></div>
-        <button class="button button-primary checkout-submit" type="submit" [disabled]="!config.whatsappNumber">
-          <i class="uil uil-whatsapp" aria-hidden="true"></i>{{ config.whatsappNumber ? 'Continue to WhatsApp' : 'WhatsApp not configured' }}
-        </button>
-        @if (submitted && checkoutForm.invalid) {<p class="status-message error" role="alert">Check the highlighted customer details.</p>}
-        @if (!config.whatsappNumber) {<p class="config-note">Development mode: add the business WhatsApp number in storefront configuration before launch.</p>}
-        <div class="whatsapp-next"><i class="uil uil-whatsapp" aria-hidden="true"></i><div><strong>What happens next?</strong><p class="text-sm! font-medium! leading-6!">WhatsApp opens with your order ready to review. Availability and delivery charges are confirmed in chat.</p></div></div>
-      </aside>
-    </form>
+    <app-payment-checkout [lines]="checkoutLines" [blockedItemCount]="blockedItemCount" />
   } @else {
     <section class="empty-state empty-cart">
       <i class="uil uil-shopping-cart-alt" aria-hidden="true"></i>

@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { catchError, map, Observable, of, throwError } from 'rxjs';
+import { catchError, from, map, mergeMap, Observable, of, shareReplay, switchMap, throwError, toArray } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { buildApiUrl } from '../core/endpoint';
 import { Category, Product } from '../core/store.models';
@@ -26,16 +26,34 @@ export abstract class CatalogRepository {
 @Injectable({ providedIn: 'root' })
 export class CatalogService extends CatalogRepository {
   private readonly base = environment.apiBaseUrl;
+  private readonly pageSize = 100;
+  private readonly pageConcurrency = 4;
+  private productsRequest?: Observable<readonly Product[]>;
 
   constructor(private readonly http: HttpClient) {
     super();
   }
 
   override getProducts(): Observable<readonly Product[]> {
-    const params = new HttpParams().set('limit', 100);
-    return this.http
-      .get<PaginatedEnvelope<Product>>(buildApiUrl(this.base, environment.apiEndpoints.products), { params })
-      .pipe(map(({ data }) => data));
+    this.productsRequest ??= this.loadProductPage(1).pipe(
+      switchMap((firstPage) => {
+        const pageCount = Math.max(1, Math.ceil(firstPage.meta.total / Math.max(firstPage.meta.limit, 1)));
+        if (pageCount === 1) return of([firstPage]);
+
+        return from(Array.from({ length: pageCount - 1 }, (_, index) => index + 2)).pipe(
+          mergeMap((page) => this.loadProductPage(page), this.pageConcurrency),
+          toArray(),
+          map((remainingPages) => [firstPage, ...remainingPages.sort((a, b) => a.meta.page - b.meta.page)]),
+        );
+      }),
+      map((pages) => {
+        const products = new Map<string, Product>();
+        for (const product of pages.flatMap((page) => page.data)) products.set(product.id, product);
+        return [...products.values()];
+      }),
+      shareReplay({ bufferSize: 1, refCount: true }),
+    );
+    return this.productsRequest;
   }
 
   override getProductBySlug(slug: string): Observable<Product | undefined> {
@@ -53,6 +71,14 @@ export class CatalogService extends CatalogRepository {
     return this.http
       .get<ApiEnvelope<readonly Category[]>>(buildApiUrl(this.base, environment.apiEndpoints.categories))
       .pipe(map(({ data }) => [...data].sort((first, second) => first.displayOrder - second.displayOrder)));
+  }
+
+  private loadProductPage(page: number): Observable<PaginatedEnvelope<Product>> {
+    const params = new HttpParams().set('limit', this.pageSize).set('page', page);
+    return this.http.get<PaginatedEnvelope<Product>>(
+      buildApiUrl(this.base, environment.apiEndpoints.products),
+      { params },
+    );
   }
 
   search(products: readonly Product[], query: string, category = 'All'): readonly Product[] {

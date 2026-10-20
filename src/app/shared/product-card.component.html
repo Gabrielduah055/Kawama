@@ -23,9 +23,9 @@
   <div class="product-card-content flex flex-1 flex-col">
     <a class="product-name" [routerLink]="['/product', product.slug]">{{ product.name }}</a>
     <div class="price-row">
-      <strong>{{ product.price | currency: product.currency : 'symbol-narrow' : '1.0-0' : 'en-GH' }}</strong>
+      <strong>{{ product.price | currency: product.currency : 'symbol-narrow' : '1.2-2' : 'en-GH' }}</strong>
       @if (product.compareAtPrice) {
-      <s>{{ product.compareAtPrice | currency: product.currency : 'symbol-narrow' : '1.0-0' : 'en-GH' }}</s>
+      <s>{{ product.compareAtPrice | currency: product.currency : 'symbol-narrow' : '1.2-2' : 'en-GH' }}</s>
       }
     </div>
     <div class="product-card-bottom mt-auto">

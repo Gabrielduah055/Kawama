@@ -147,7 +147,7 @@
     <div class="compact-heading review-highlights-heading">
       <div>
         <h2 id="review-highlights-title">What customers are saying</h2>
-        <p>Recent approved reviews from the Kawama catalog.</p>
+        <p>{{ reviewLoadIncomplete ? 'Approved reviews currently available from the Kawama catalog.' : 'Recent approved reviews from the Kawama catalog.' }}</p>
       </div>
     </div>
     <div class="review-highlights-grid">
@@ -171,7 +171,7 @@
   <img src="/images/kawama-editorial.png" alt="Cookware and kitchen tools arranged on a wooden preparation table" width="1024" height="1024" loading="lazy" />
   <div>
     <h2 id="home-promo-title">Build a kitchen that works for you</h2>
-    <p>Compare practical options, save your cart, and finish the order with a real person on WhatsApp.</p>
+    <p>Compare practical options, save your cart, and pay securely through the Kawama checkout.</p>
     <a class="button button-primary" routerLink="/shop">Start shopping <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
   </div>
 </section>

@@ -30,6 +30,40 @@ describe('CatalogService', () => {
     expect(products.length).toBe(SAMPLE_PRODUCTS.length);
   });
 
+  it('loads every catalog page before publishing a deduplicated result', () => {
+    const first = SAMPLE_PRODUCTS[0];
+    const second = { ...SAMPLE_PRODUCTS[1], id: 'page-two-product' };
+    const third = { ...SAMPLE_PRODUCTS[2], id: 'page-three-product' };
+    let emissions = 0;
+    let products: readonly Product[] = [];
+
+    service.getProducts().subscribe((value) => {
+      emissions += 1;
+      products = value;
+    });
+    http.expectOne((request) => request.params.get('page') === '1').flush({
+      data: [first],
+      meta: { page: 1, limit: 100, total: 201 },
+    });
+    expect(emissions).toBe(0);
+
+    const remaining = http.match(
+      (request) => request.url === buildApiUrl(environment.apiBaseUrl, environment.apiEndpoints.products),
+    );
+    expect(remaining.length).toBe(2);
+    remaining.find((request) => request.request.params.get('page') === '3')!.flush({
+      data: [third, first],
+      meta: { page: 3, limit: 100, total: 201 },
+    });
+    remaining.find((request) => request.request.params.get('page') === '2')!.flush({
+      data: [second],
+      meta: { page: 2, limit: 100, total: 201 },
+    });
+
+    expect(emissions).toBe(1);
+    expect(products.map((product) => product.id)).toEqual([first.id, second.id, third.id]);
+  });
+
   it('loads managed categories for navigation and filters', () => {
     let categoryNames: readonly string[] = [];
     service.getCategories().subscribe((categories) => (categoryNames = categories.map((category) => category.name)));

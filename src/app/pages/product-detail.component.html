@@ -49,16 +49,16 @@
             <span class="review-stars" [attr.aria-label]="reviews.summaryFor(product.id).average.toFixed(1) + ' out of 5 stars'">
               {{ '★'.repeat(roundedRating(product.id)) }}{{ '☆'.repeat(5 - roundedRating(product.id)) }}
             </span>
-            <a href="#product-reviews">{{ reviews.summaryFor(product.id).average | number: '1.1-1' }} from {{ reviews.summaryFor(product.id).count }} {{ reviews.summaryFor(product.id).count === 1 ? 'review' : 'reviews' }}</a>
+            <a [routerLink]="[]" fragment="product-reviews">{{ reviews.summaryFor(product.id).average | number: '1.1-1' }} from {{ reviews.summaryFor(product.id).count }} {{ reviews.summaryFor(product.id).count === 1 ? 'review' : 'reviews' }}</a>
           } @else {
-            <a href="#product-reviews">No reviews yet</a>
+            <a [routerLink]="[]" fragment="product-reviews">No reviews yet</a>
           }
         </div>
         <div class="detail-price-stock">
           <div class="detail-price price-row">
-            <strong>{{ product.price | currency: product.currency : 'symbol-narrow' : '1.0-0' : 'en-GH' }}</strong>
+            <strong>{{ product.price | currency: product.currency : 'symbol-narrow' : '1.2-2' : 'en-GH' }}</strong>
             @if (product.compareAtPrice) {
-              <s>{{ product.compareAtPrice | currency: product.currency : 'symbol-narrow' : '1.0-0' : 'en-GH' }}</s>
+              <s>{{ product.compareAtPrice | currency: product.currency : 'symbol-narrow' : '1.2-2' : 'en-GH' }}</s>
             }
           </div>
           <span class="stock-pill" [class.out]="!product.inStock">{{ product.inStock ? 'In Stock' : 'Sold Out' }}</span>
@@ -96,8 +96,8 @@
     </section>
 
     <nav class="detail-tabs" aria-label="Product page sections">
-      <a href="#product-details">Product Details</a>
-      <a href="#product-reviews">Reviews ({{ reviews.summaryFor(product.id).count }})</a>
+      <a [routerLink]="[]" fragment="product-details">Product Details</a>
+      <a [routerLink]="[]" fragment="product-reviews">Reviews ({{ reviews.summaryFor(product.id).count }})</a>
     </nav>
 
     <section id="product-details" class="product-details-panel" [class.description-only]="!product.specifications?.length" aria-labelledby="details-title">
