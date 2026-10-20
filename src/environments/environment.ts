@@ -2,7 +2,7 @@ import { apiEndpoints, externalEndpoints } from './environment.config';
 
 export const environment = {
   production: false,
-  apiBaseUrl: 'http://localhost:3000/api/v1',
+  apiBaseUrl: 'https://kawama-admin-backend.onrender.com/api/v1',
   apiEndpoints,
   externalEndpoints,
 } as const;

@@ -34,4 +34,34 @@ describe('WhatsAppService', () => {
     expect(url.hostname).toBe('wa.me');
     expect(url.searchParams.get('text')).toBe(service.buildMessage(order));
   });
+
+  it('builds an exact single-item order summary without optional notes', () => {
+    const singleItemOrder: OrderDraft = {
+      lines: [{ product: SAMPLE_PRODUCTS[2], quantity: 1 }],
+      customer: {
+        customerName: 'Kojo Asare',
+        phone: '+233 24 111 2233',
+        deliveryAddress: 'East Legon, Accra',
+      },
+      subtotal: SAMPLE_PRODUCTS[2].price,
+    };
+
+    expect(service.buildMessage(singleItemOrder)).toBe(
+      [
+        'Hello Kawama, I would like to place this order:',
+        '',
+        '1. Forge 7pc Knife Set',
+        '   1 x GH₵499 = GH₵499',
+        '',
+        'Subtotal: GH₵499',
+        '',
+        'Customer details',
+        'Name: Kojo Asare',
+        'Phone: +233 24 111 2233',
+        'Delivery area/address: East Legon, Accra',
+        '',
+        'Please confirm availability and the delivery charge in this chat.',
+      ].join('\n'),
+    );
+  });
 });

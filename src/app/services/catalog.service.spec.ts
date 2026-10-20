@@ -69,4 +69,17 @@ describe('CatalogService', () => {
     const results = service.recommend(SAMPLE_PRODUCTS, undefined, [excludedId], 6);
     expect(results.some((product) => product.id === excludedId)).toBeFalse();
   });
+
+  it('prefers the selected product category before complementary categories', () => {
+    const selected = SAMPLE_PRODUCTS[0];
+    const results = service.recommend(SAMPLE_PRODUCTS, selected, [], 4);
+    expect(results[0].category).toBe(selected.category);
+  });
+
+  it('uses cart categories and excludes cart items from recommendations', () => {
+    const cartProduct = SAMPLE_PRODUCTS.find((product) => product.category === 'Storage' && product.inStock)!;
+    const results = service.recommend(SAMPLE_PRODUCTS, undefined, [cartProduct.id], 4);
+    expect(results[0].category).toBe('Storage');
+    expect(results.some((product) => product.id === cartProduct.id)).toBeFalse();
+  });
 });

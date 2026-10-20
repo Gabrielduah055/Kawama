@@ -40,6 +40,20 @@
       <div class="detail-copy">
         <p class="detail-category">{{ product.category }}</p>
         <h1 id="product-title">{{ product.name }}</h1>
+        <div class="detail-rating">
+          @if (reviewsLoading) {
+            <span>Loading reviews...</span>
+          } @else if (reviewsError) {
+            <span>Reviews unavailable</span>
+          } @else if (reviews.summaryFor(product.id).count) {
+            <span class="review-stars" [attr.aria-label]="reviews.summaryFor(product.id).average.toFixed(1) + ' out of 5 stars'">
+              {{ '★'.repeat(roundedRating(product.id)) }}{{ '☆'.repeat(5 - roundedRating(product.id)) }}
+            </span>
+            <a href="#product-reviews">{{ reviews.summaryFor(product.id).average | number: '1.1-1' }} from {{ reviews.summaryFor(product.id).count }} {{ reviews.summaryFor(product.id).count === 1 ? 'review' : 'reviews' }}</a>
+          } @else {
+            <a href="#product-reviews">No reviews yet</a>
+          }
+        </div>
         <div class="detail-price-stock">
           <div class="detail-price price-row">
             <strong>{{ product.price | currency: product.currency : 'symbol-narrow' : '1.0-0' : 'en-GH' }}</strong>
@@ -110,6 +124,7 @@
     <section id="product-reviews" class="customer-reviews" aria-labelledby="product-reviews-title">
       <div class="section-title-row">
         <h2 id="product-reviews-title">Customer Reviews</h2>
+        <a class="button button-outline button-small" [routerLink]="['/review', product.slug]">Write a review</a>
       </div>
       @if (reviewsLoading) {
         <app-loading-spinner label="Loading reviews..." />

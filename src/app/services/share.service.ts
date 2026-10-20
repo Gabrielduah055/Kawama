@@ -3,6 +3,9 @@ import { Injectable } from '@angular/core';
 @Injectable({ providedIn: 'root' })
 export class ShareService {
   async shareProduct(title: string, text: string, path: string): Promise<'shared' | 'copied'> {
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+      throw new Error('Sharing is only available in a browser.');
+    }
     const url = new URL(path, window.location.origin).toString();
     if (navigator.share) {
       try {

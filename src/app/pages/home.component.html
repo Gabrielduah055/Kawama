@@ -2,7 +2,7 @@
   <div class="home-hero-copy relative z-10 flex min-h-[360px] flex-col items-start justify-center">
     <p class="hero-kicker">Quality kitchenware</p>
     <h1 id="hero-title">Make every meal feel special</h1>
-    <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Discover durable, stylish and practical kitchenware for everyday cooking and special occasions.</p>
+    <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Discover durable kitchenware for everyday cooking, thoughtful hosting, and easier routines.</p>
     <a class="button button-primary" routerLink="/shop">Shop kitchenware <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
   </div>
   <div class="home-hero-media">
@@ -10,6 +10,18 @@
   </div>
 </section>
 
+@if (loadError) {
+  <section class="empty-state page-shell" role="alert">
+    <i class="uil uil-exclamation-triangle" aria-hidden="true"></i>
+    <h2>We could not load the catalog.</h2>
+    <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Check your connection and try again.</p>
+    <button class="button button-primary" type="button" (click)="load()">Try again</button>
+  </section>
+} @else if (loading) {
+  <app-loading-spinner class="page-shell block" label="Loading the latest products..." />
+}
+
+@if (!loading && !loadError) {
 <section class="home-section page-shell" aria-labelledby="categories-title">
   <div class="compact-heading heading-with-link">
     <h2 id="categories-title">Shop by category</h2>
@@ -30,23 +42,12 @@
   }
 </section>
 
-@if (loadError) {
-  <section class="empty-state page-shell" role="alert">
-    <i class="uil uil-exclamation-triangle" aria-hidden="true"></i>
-    <h2>We could not load the catalog.</h2>
-    <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Check your connection and try again.</p>
-    <button class="button button-primary" type="button" (click)="load()">Try again</button>
-  </section>
-} @else if (loading) {
-  <app-loading-spinner class="page-shell block" label="Loading the latest products..." />
-}
-
 <section class="home-section featured-section page-shell" aria-labelledby="featured-title">
   <div class="compact-heading heading-with-link">
     <h2 id="featured-title">Featured Products</h2>
     <a class="text-link" routerLink="/shop">Shop all products <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
   </div>
-  <div class="featured-grid">
+  <div class="featured-grid home-product-rail" tabindex="0" aria-label="Featured products. Scroll horizontally for more items on a small screen.">
     @for (product of featuredProducts; track product.id) {
       <app-product-card [product]="product" />
     }
@@ -58,23 +59,52 @@
     <img src="/images/kawama-category-cookware-black.png" alt="Black cookware arranged for everyday cooking" width="1680" height="945" loading="lazy" />
   </div>
   <div class="page-shell seasonal-copy">
-    <p class="hero-kicker">Seasonal essentials</p>
-    <h2 id="seasonal-title">Equip your kitchen for every season</h2>
-    <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Find reliable kitchenware that helps you cook with ease and confidence.</p>
-    <a class="button button-primary" routerLink="/shop">Shop seasonal picks <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
+    <p class="hero-kicker">The Kawama promise</p>
+    <h2 id="seasonal-title">Useful pieces for real kitchens</h2>
+    <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Clear details, practical choices, and direct ordering support when you need it.</p>
+    <a class="button button-primary" routerLink="/shop">Browse the collection <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
   </div>
 </section>
 
-<section class="home-section page-shell" aria-labelledby="explore-title">
-  <div class="compact-heading heading-with-link">
-    <h2 id="explore-title">More to explore</h2>
-    <a class="text-link" routerLink="/shop">Shop all products <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
+<section class="home-section catalog-section page-shell" aria-labelledby="catalog-title">
+  <div class="catalog-heading">
+    <div>
+      <h2 id="catalog-title">Shop the collection</h2>
+      <p>Search the current catalog or narrow it by category.</p>
+    </div>
+    <label class="home-catalog-search">
+      <i class="uil uil-search" aria-hidden="true"></i>
+      <span class="sr-only">Search the catalog</span>
+      <input type="search" [(ngModel)]="searchQuery" placeholder="Search products" />
+    </label>
   </div>
-  <div class="featured-grid">
-    @for (product of exploreProducts; track product.id) {
+
+  <div class="category-tabs home-category-tabs" aria-label="Filter the catalog by category">
+    @for (category of categoryNames; track category) {
+      <button type="button" [class.active]="activeCategory === category" [attr.aria-pressed]="activeCategory === category" (click)="activeCategory = category">
+        {{ category }}
+      </button>
+    }
+  </div>
+
+  <div class="catalog-result-summary" aria-live="polite">
+    {{ catalogProducts.length }} {{ catalogProducts.length === 1 ? 'product' : 'products' }}
+  </div>
+
+  @if (catalogProducts.length) {
+  <div class="home-catalog-grid">
+    @for (product of catalogProducts; track product.id) {
       <app-product-card [product]="product" />
     }
   </div>
+  } @else {
+    <div class="empty-state compact-empty">
+      <i class="uil uil-search" aria-hidden="true"></i>
+      <h3>No products match that search.</h3>
+      <p>Try another word or clear the selected category.</p>
+      <button class="button button-primary" type="button" (click)="resetCatalogFilters()">Clear filters</button>
+    </div>
+  }
 </section>
 
 <section class="support-band" aria-labelledby="support-title">
@@ -94,3 +124,55 @@
     }
   </div>
 </section>
+
+@if (recommendations.length) {
+  <section class="home-section recommendations-section page-shell" aria-labelledby="recommendations-title">
+    <div class="compact-heading recommendations-heading">
+      <div>
+        <h2 id="recommendations-title">Picked for your kitchen</h2>
+        <p>{{ recommendationContext }}</p>
+      </div>
+      <a class="text-link" routerLink="/shop">Shop all products <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
+    </div>
+    <div class="featured-grid home-product-rail" tabindex="0" aria-label="Recommended products. Scroll horizontally for more items on a small screen.">
+      @for (product of recommendations; track product.id) {
+        <app-product-card [product]="product" />
+      }
+    </div>
+  </section>
+}
+
+@if (reviewHighlights.length) {
+  <section class="home-section review-highlights-section page-shell" aria-labelledby="review-highlights-title">
+    <div class="compact-heading review-highlights-heading">
+      <div>
+        <h2 id="review-highlights-title">What customers are saying</h2>
+        <p>Recent approved reviews from the Kawama catalog.</p>
+      </div>
+    </div>
+    <div class="review-highlights-grid">
+      @for (highlight of reviewHighlights; track highlight.review.id; let index = $index) {
+        <article class="review-highlight" [class.featured-review]="index === 0">
+          <span class="review-highlight-stars" [attr.aria-label]="highlight.review.rating + ' out of 5 stars'">
+            {{ '★'.repeat(highlight.review.rating) }}{{ '☆'.repeat(5 - highlight.review.rating) }}
+          </span>
+          <blockquote>“{{ highlight.review.comment }}”</blockquote>
+          <div>
+            <strong>{{ highlight.review.reviewerName }}</strong>
+            <a [routerLink]="['/product', highlight.product.slug]">{{ highlight.product.name }}</a>
+          </div>
+        </article>
+      }
+    </div>
+  </section>
+}
+
+<section class="home-promo page-shell" aria-labelledby="home-promo-title">
+  <img src="/images/kawama-editorial.png" alt="Cookware and kitchen tools arranged on a wooden preparation table" width="1024" height="1024" loading="lazy" />
+  <div>
+    <h2 id="home-promo-title">Build a kitchen that works for you</h2>
+    <p>Compare practical options, save your cart, and finish the order with a real person on WhatsApp.</p>
+    <a class="button button-primary" routerLink="/shop">Start shopping <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
+  </div>
+</section>
+}

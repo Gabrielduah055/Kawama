@@ -70,7 +70,9 @@ export class ProductDetailComponent implements OnInit {
             },
           });
         }
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (typeof window !== 'undefined') {
+          window.scrollTo({ top: 0 });
+        }
       },
       error: () => {
         this.loading = false;
@@ -80,7 +82,14 @@ export class ProductDetailComponent implements OnInit {
   }
 
   get recommendations(): readonly Product[] {
-    return this.product ? this.catalogService.recommend(this.products, this.product, [], 4) : [];
+    return this.product
+      ? this.catalogService.recommend(
+          this.products,
+          this.product,
+          this.cart.items().map((item) => item.productId),
+          4,
+        )
+      : [];
   }
 
   selectImage(index: number): void {
@@ -104,6 +113,10 @@ export class ProductDetailComponent implements OnInit {
 
   changeQuantity(delta: number): void {
     this.quantity = Math.min(Math.max(this.quantity + delta, 1), 20);
+  }
+
+  roundedRating(productId: string): number {
+    return Math.round(this.reviews.summaryFor(productId).average);
   }
 
   async share(): Promise<void> {

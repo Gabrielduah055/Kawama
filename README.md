@@ -1,6 +1,6 @@
 # Kawama
 
-The storefront reads its catalog, managed categories, and approved reviews from the Kawama API. Development uses `http://localhost:3000/api/v1`; production uses the Render service configured in `src/environments/environment.production.ts`. Update that URL if the Render service name changes.
+The storefront reads its catalog, managed categories, and approved reviews from the Kawama API. Both local development and production use the Render service configured in `src/environments/environment.ts` and `src/environments/environment.production.ts`. Update both URLs if the Render service name changes.
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.25.
 

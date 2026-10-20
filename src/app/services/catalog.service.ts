@@ -71,7 +71,11 @@ export class CatalogService extends CatalogRepository {
     limit = 4,
   ): readonly Product[] {
     const cartProducts = products.filter((product) => cartProductIds.includes(product.id));
-    const preferredCategories = new Set([
+    const matchingCategories = new Set([
+      ...(selectedProduct ? [selectedProduct.category] : []),
+      ...cartProducts.map((product) => product.category),
+    ]);
+    const complementaryCategories = new Set([
       ...(selectedProduct?.complementaryCategories ?? []),
       ...cartProducts.flatMap((product) => product.complementaryCategories),
     ]);
@@ -80,8 +84,14 @@ export class CatalogService extends CatalogRepository {
     return [...products]
       .filter((product) => product.inStock && !excluded.has(product.id))
       .sort((first, second) => {
-        const firstScore = (preferredCategories.has(first.category) ? 2 : 0) + (first.featured ? 1 : 0);
-        const secondScore = (preferredCategories.has(second.category) ? 2 : 0) + (second.featured ? 1 : 0);
+        const firstScore =
+          (matchingCategories.has(first.category) ? 4 : 0) +
+          (complementaryCategories.has(first.category) ? 2 : 0) +
+          (first.featured ? 1 : 0);
+        const secondScore =
+          (matchingCategories.has(second.category) ? 4 : 0) +
+          (complementaryCategories.has(second.category) ? 2 : 0) +
+          (second.featured ? 1 : 0);
         return secondScore - firstScore;
       })
       .slice(0, limit);

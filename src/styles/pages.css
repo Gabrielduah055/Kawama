@@ -13,6 +13,9 @@
 .detail-copy { padding-top: .35rem; }
 .detail-category { margin: 0 0 .5rem; color: var(--ink); font-size: .66rem; font-weight: 700; letter-spacing: .28em; text-transform: uppercase; }
 .detail-copy h1 { margin: 0; font-size: clamp(2.1rem, 4vw, 3.1rem); font-weight: 600; line-height: 1.02; letter-spacing: -.04em; }
+.detail-rating { min-height: 28px; display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; margin-top: .55rem; color: var(--muted); font-size: .78rem; }
+.detail-rating a { color: var(--primary); font-weight: 700; }
+.detail-rating a:hover { text-decoration: underline; }
 .detail-price-stock { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: .85rem 0 .4rem; }
 .detail-price strong { color: var(--primary); font-size: 1.75rem; }
 .stock-pill { padding: .3rem .7rem; border-radius: 4px; background: var(--success-soft); color: var(--success); font-size: .72rem; font-weight: 600; }
@@ -76,6 +79,9 @@
 .cart-total-block > div { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
 .cart-total-block span { font-size: .8rem; }
 .cart-total-block strong { font-size: 1.2rem; }
+.cart-checkout { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(330px, .92fr); align-items: start; gap: 1rem; margin-top: 1rem; scroll-margin-top: 9rem; }
+.cart-order-handoff { position: sticky; top: 1rem; }
+.cart-order-handoff > p { margin: .2rem 0 1rem; color: var(--muted); font-size: .86rem; line-height: 1.6; }
 .cart-total-block .button { width: 100%; }
 
 /* Checkout */
@@ -188,6 +194,8 @@
   .cart-footer-row > .button { width: 100%; }
   .cart-total-block { padding: 1.2rem 0 0; border-top: 1px solid var(--line); border-left: 0; }
   .checkout-layout { grid-template-columns: 1fr; }
+  .cart-checkout { grid-template-columns: 1fr; scroll-margin-top: 8.5rem; }
+  .cart-order-handoff { position: static; }
   .contact-hero { min-height: 520px; grid-template-columns: 1fr; grid-template-rows: 1fr; width: 100%; }
   .contact-hero-copy, .contact-hero > img { grid-area: 1 / 1; }
   .contact-hero-copy { justify-content: end; padding: 1.2rem; color: #fff; background: linear-gradient(0deg, rgb(15 21 28 / 88%), transparent 78%); }
