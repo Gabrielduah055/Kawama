@@ -174,6 +174,57 @@ describe('PaymentCheckoutComponent', () => {
     expect(refreshes).toBe(1);
     expect(component.checkoutForm.controls.fullName.value).toBe('Ama Mensah');
   });
+
+  it('clears an uncreated checkout and shows a safe message for backend configuration errors', () => {
+    const response = new Subject<CheckoutSession>();
+    const { component, checkout } = createComponent();
+    checkout.createSession.and.returnValue(response);
+    checkout.clearPending.and.returnValue(true);
+    component.lines = [{ product: SAMPLE_PRODUCTS[0], quantity: 1 }];
+    fillForm(component);
+
+    component.submit();
+    response.error(new HttpErrorResponse({
+      status: 503,
+      error: { error: { code: 'PAYSTACK_NOT_CONFIGURED', message: 'internal detail' } },
+    }));
+
+    expect(checkout.clearPending).toHaveBeenCalled();
+    expect(checkout.resolvePendingFailure).not.toHaveBeenCalled();
+    expect(component.errorMessage).toContain('temporarily unavailable');
+    expect(component.errorMessage).not.toContain('internal detail');
+  });
+
+  it('retains the idempotency context after an uncertain Paystack outcome', () => {
+    const active = pendingCheckout();
+    const current = signal<PendingCheckout | undefined>(active);
+    const { component, checkout } = createComponent(active, current);
+    checkout.retryPending.and.returnValue(throwError(() => new HttpErrorResponse({
+      status: 409,
+      error: { error: { code: 'CHECKOUT_INITIALIZATION_UNCERTAIN' } },
+    })));
+
+    component.retryCheckout();
+
+    expect(checkout.clearPending).not.toHaveBeenCalled();
+    expect(checkout.resolvePendingFailure).not.toHaveBeenCalled();
+    expect(current()).toBe(active);
+    expect(component.errorMessage).toContain('remains protected');
+  });
+
+  it('resolves a definitively rejected Paystack initialization', () => {
+    const active = pendingCheckout();
+    const { component, checkout } = createComponent(active);
+    checkout.retryPending.and.returnValue(throwError(() => new HttpErrorResponse({
+      status: 502,
+      error: { error: { code: 'PAYSTACK_AUTHENTICATION_FAILED' } },
+    })));
+
+    component.retryCheckout();
+
+    expect(checkout.resolvePendingFailure).toHaveBeenCalledWith('PAYSTACK_AUTHENTICATION_FAILED');
+    expect(component.errorMessage).toContain('Nothing was charged');
+  });
 });
 
 function createComponent(

@@ -310,11 +310,27 @@ export class PaymentCheckoutComponent {
       this.syncFormToActiveCheckout();
       this.errorMessage = 'Paystack is still preparing this payment. Wait a moment, then try again.';
     } else if (
+      this.errorCode === 'PAYSTACK_NOT_CONFIGURED' ||
+      this.errorCode === 'PAYSTACK_INVALID_CONFIGURATION'
+    ) {
+      if (!this.clearUncreatedCheckout()) return;
+      this.errorMessage = 'Online payment is temporarily unavailable. Nothing was charged. Please try again later.';
+    } else if (
+      this.errorCode === 'CHECKOUT_INITIALIZATION_UNCERTAIN' ||
+      this.errorCode === 'PAYSTACK_TIMEOUT' ||
+      this.errorCode === 'PAYSTACK_CONNECTION_FAILED' ||
+      this.errorCode === 'PAYSTACK_PROVIDER_ERROR' ||
+      this.errorCode === 'PAYSTACK_INVALID_RESPONSE' ||
+      this.errorCode === 'PAYSTACK_UNAVAILABLE'
+    ) {
+      this.syncFormToActiveCheckout();
+      this.errorMessage = 'We could not confirm whether Paystack started. Your checkout remains protected; try the same payment again shortly.';
+    } else if (
       this.errorCode === 'CHECKOUT_EXPIRED' ||
       this.errorCode === 'CHECKOUT_INITIALIZATION_FAILED' ||
-      this.errorCode === 'PAYSTACK_UNAVAILABLE' ||
       this.errorCode === 'PAYSTACK_INITIALIZATION_FAILED' ||
-      this.errorCode === 'PAYSTACK_INVALID_RESPONSE' ||
+      this.errorCode === 'PAYSTACK_AUTHENTICATION_FAILED' ||
+      this.errorCode === 'PAYSTACK_INITIALIZATION_REJECTED' ||
       this.errorCode === 'CHECKOUT_NOT_FOUND'
     ) {
       this.resolveFailedCheckout(this.errorCode);
