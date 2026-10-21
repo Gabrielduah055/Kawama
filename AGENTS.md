@@ -76,6 +76,8 @@ Payment and delivery rules
 - The backend's signed webhook and provider verification determine payment success. Redirects, callback query parameters, local flags and browser callbacks are not payment proof.
 - Generate a cryptographically random idempotency key, bind it to the submitted snapshot, and safely persist pending state before leaving the site. The current backend uses this key as checkoutToken.
 - Retries after uncertain network outcomes reuse the same key and exact payload. Do not silently create a replacement charge or reuse an old key for changed details.
+- `CHECKOUT_INITIALIZATION_UNCERTAIN` explicitly means the backend retained the original order/reference: keep the checkout active and retry with the same key. Never archive it or create a replacement key for that error.
+- A recovered checkout may return `paymentStatus: needs_attention`; route customers to the status/manual-review experience and do not start another payment.
 - Recover pending state on return/reload. Reference/trxref callback parameters are not checkout tokens. Missing context needs an honest recovery state.
 - Recheck the status endpoint. Use bounded polling with teardown and a manual recheck option. A polling timeout means confirmation is pending.
 - Handle pending, paid, failed, refunded, needs_attention, expired checkout and network errors explicitly. Returning from Paystack without paying does not cancel a server reservation.
