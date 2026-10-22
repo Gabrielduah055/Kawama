@@ -1,0 +1,77 @@
+<div class="policies-page page-shell">
+  <nav class="breadcrumb" aria-label="Breadcrumb"><a routerLink="/">Home</a><span>/</span><span>Customer policies</span></nav>
+
+  <header class="policies-heading">
+    <p class="hero-kicker">Customer information</p>
+    <h1>What Kawama currently publishes</h1>
+    <p>Kawama serves shoppers in {{ config.locationLabel }}. This page separates the verified checkout flow from policy details the business still needs to publish.</p>
+  </header>
+
+  <nav class="policy-nav" aria-label="Policy sections">
+    <a [routerLink]="[]" fragment="terms">Terms</a>
+    <a [routerLink]="[]" fragment="privacy">Privacy</a>
+    <a [routerLink]="[]" fragment="delivery-returns">Delivery &amp; returns</a>
+    <a routerLink="/contact" fragment="faqs">FAQs</a>
+  </nav>
+
+  <section id="terms" class="policy-section" aria-labelledby="terms-title">
+    <div>
+      <p class="policy-status">Full policy not yet published</p>
+      <h2 id="terms-title">Terms</h2>
+    </div>
+    <div>
+      <p>Customers can browse without an account, add current catalog products to a cart, and submit a product-payment checkout. The backend confirms product price and stock before Paystack payment starts.</p>
+      <h3>Still needed for complete terms</h3>
+      <ul>
+        <li>The seller's registered legal name and business contact details</li>
+        <li>When an order becomes accepted and when either party may cancel it</li>
+        <li>How pricing errors, disputes, complaints, and applicable law are handled</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="privacy" class="policy-section" aria-labelledby="privacy-title">
+    <div>
+      <p class="policy-status">Full notice not yet published</p>
+      <h2 id="privacy-title">Privacy</h2>
+    </div>
+    <div>
+      <p>Checkout asks for a name, email address, WhatsApp number, delivery address, optional order notes, and explicit WhatsApp consent. The browser stores cart and pending-checkout recovery data. Ask Kawama sends customer questions and optional product-page context to the backend and keeps its conversation identifiers in session storage.</p>
+      <p>Product payment takes place on Paystack's hosted checkout. Payment confirmation comes from the backend, not from browser callback details.</p>
+      <h3>Still needed for a complete privacy notice</h3>
+      <ul>
+        <li>The data controller's legal identity and privacy contact</li>
+        <li>Purposes, legal bases, retention periods, processors, and international transfers</li>
+        <li>Customer rights, complaint routes, cookie details, and security incident contacts</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="delivery-returns" class="policy-section" aria-labelledby="delivery-title">
+    <div>
+      <p class="policy-status">Some details not yet published</p>
+      <h2 id="delivery-title">Delivery &amp; returns</h2>
+    </div>
+    <div>
+      <p>Paystack collects the backend-confirmed product amount only. Delivery is quoted separately, paid on delivery, and coordinated after product payment. An unquoted delivery fee is not a free-delivery promise.</p>
+      <h3>Delivery details still needed</h3>
+      <ul>
+        <li>Service areas, fee calculation, delivery estimates, and failed-delivery handling</li>
+        <li>Who to contact for address changes or delivery problems</li>
+      </ul>
+      <h3>Return details still needed</h3>
+      <ul>
+        <li>Eligibility, time limits, item condition, exclusions, and evidence requirements</li>
+        <li>The return process, transport costs, exchanges, and refund method and timing</li>
+      </ul>
+    </div>
+  </section>
+
+  <aside class="policy-help">
+    <div>
+      <h2>Need a checkout answer?</h2>
+      <p>Read the current payment and delivery FAQs before placing an order.</p>
+    </div>
+    <a class="button button-primary" routerLink="/contact" fragment="faqs">Read FAQs</a>
+  </aside>
+</div>

@@ -24,6 +24,14 @@ The Angular app must never call the webhook. A redirect or `reference`/`trxref` 
 
 Product payment excludes delivery. Delivery charges are quoted separately and coordinated after payment. WhatsApp is an optional post-payment contact action and a missing business WhatsApp number does not block checkout.
 
+## Ask Kawama
+
+The global shopping widget calls `POST /api/ai/chat` on the same backend origin. The first request omits `X-Chat-Session`; the frontend saves the returned opaque session header and `conversationId` in guarded `sessionStorage` for later turns. Product pages send the current product slug as request context, and canonical product cards returned by the backend route to `/product/:slug`.
+
+The OpenRouter API key, model selection, conversation retention and factual grounding remain on the backend. Configure `AI_CHAT_ENABLED`, `OPENROUTER_API_KEY`, the approved store-policy values and CORS exposure for `X-Chat-Session` in `kawama-admin-backend`. Never add the provider key to this Angular project.
+
+The footer links to the current Terms, Privacy, Delivery & returns and FAQ disclosures. The repository does not contain a verified legal seller identity, business contact channel, complete delivery policy, privacy notice, terms, or return/refund rules. Those details need business and legal approval before the policy content can be considered complete.
+
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.25.
 
 ## Development server

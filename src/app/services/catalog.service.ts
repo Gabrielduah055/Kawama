@@ -105,6 +105,7 @@ export class CatalogService extends CatalogRepository {
     selectedProduct?: Product,
     cartProductIds: readonly string[] = [],
     limit = 4,
+    excludedProductIds: readonly string[] = [],
   ): readonly Product[] {
     const cartProducts = products.filter((product) => cartProductIds.includes(product.id));
     const matchingCategories = new Set([
@@ -115,7 +116,11 @@ export class CatalogService extends CatalogRepository {
       ...(selectedProduct?.complementaryCategories ?? []),
       ...cartProducts.flatMap((product) => product.complementaryCategories),
     ]);
-    const excluded = new Set([...cartProductIds, ...(selectedProduct ? [selectedProduct.id] : [])]);
+    const excluded = new Set([
+      ...cartProductIds,
+      ...excludedProductIds,
+      ...(selectedProduct ? [selectedProduct.id] : []),
+    ]);
 
     return [...products]
       .filter((product) => product.inStock && !excluded.has(product.id))

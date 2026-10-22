@@ -115,6 +115,13 @@
         </div>
         }
       </div>
+      <div>
+        <h2>Customer care</h2>
+        <a routerLink="/policies" fragment="terms">Terms</a>
+        <a routerLink="/policies" fragment="privacy">Privacy</a>
+        <a routerLink="/policies" fragment="delivery-returns">Delivery &amp; returns</a>
+        <a routerLink="/contact" fragment="faqs">FAQs</a>
+      </div>
       @if (config.instagramUrl || config.facebookUrl) {
       <div>
         <h2>Social</h2>
@@ -138,3 +145,5 @@
     <span>© 2026 KAWAMA. All rights reserved.</span>
   </div>
 </footer>
+
+<app-ask-kawama />

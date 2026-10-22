@@ -8,6 +8,7 @@ import { ShopComponent } from './pages/shop.component';
 import { CheckoutComponent } from './pages/checkout.component';
 import { ContactComponent } from './pages/contact.component';
 import { CheckoutResultComponent } from './pages/checkout-result.component';
+import { PoliciesComponent } from './pages/policies.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent, title: 'Kawama | Kitchenware for everyday homes' },
@@ -17,6 +18,7 @@ export const routes: Routes = [
   { path: 'checkout/result', component: CheckoutResultComponent, title: 'Payment status | Kawama' },
   { path: 'checkout', component: CheckoutComponent, title: 'Checkout | Kawama' },
   { path: 'contact', component: ContactComponent, title: 'Contact | Kawama' },
+  { path: 'policies', component: PoliciesComponent, title: 'Customer policies | Kawama' },
   { path: 'review/:slug', component: ReviewComponent, title: 'Write a review | Kawama' },
   { path: '**', component: NotFoundComponent, title: 'Page not found | Kawama' },
 ];

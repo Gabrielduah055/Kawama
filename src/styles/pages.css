@@ -184,6 +184,24 @@
 .contact-banner h2 { max-width: 12ch; margin: 0; font-size: clamp(2rem, 4vw, 3rem); font-weight: 700; line-height: 1; letter-spacing: -.04em; }
 .contact-banner-copy > p:not(.hero-kicker) { max-width: 390px; color: var(--muted); font-size: .82rem; }
 
+/* Customer policies */
+.policies-page { padding-block: 1.5rem 3.5rem; }
+.policies-heading { max-width: 760px; padding-block: 1.5rem 1rem; }
+.policies-heading h1 { margin: 0; font-size: clamp(2.2rem, 5vw, 3.8rem); line-height: 1; letter-spacing: -.045em; }
+.policies-heading > p:last-child { max-width: 680px; margin: 1rem 0 0; color: var(--muted); line-height: 1.75; }
+.policy-nav { display: flex; gap: .55rem; overflow-x: auto; margin: .8rem 0 1.2rem; padding-bottom: .35rem; scrollbar-width: thin; }
+.policy-nav a { min-height: 44px; flex: 0 0 auto; display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; padding: .55rem .9rem; font-size: .75rem; font-weight: 700; }
+.policy-nav a:hover { border-color: var(--primary); color: var(--primary); }
+.policy-section { display: grid; grid-template-columns: minmax(190px, .7fr) minmax(0, 1.5fr); gap: clamp(1.5rem, 5vw, 4rem); scroll-margin-top: 2rem; border-top: 1px solid var(--line); padding-block: clamp(1.7rem, 4vw, 2.8rem); }
+.policy-section h2 { margin: .35rem 0 0; font-size: clamp(1.7rem, 3vw, 2.4rem); line-height: 1; letter-spacing: -.035em; }
+.policy-status { width: fit-content; margin: 0; color: #8a3b27; font-size: .7rem; font-weight: 700; }
+.policy-section > div:last-child > p { margin: 0 0 1rem; color: var(--muted); line-height: 1.75; }
+.policy-section h3 { margin: 1.35rem 0 .55rem; font-size: .9rem; }
+.policy-section ul { display: grid; gap: .55rem; margin: 0; padding-left: 1.2rem; color: var(--muted); font-size: .82rem; line-height: 1.65; }
+.policy-help { display: flex; align-items: center; justify-content: space-between; gap: 2rem; margin-top: .5rem; border-radius: var(--radius); background: var(--paper); padding: clamp(1.25rem, 4vw, 2rem); }
+.policy-help h2 { margin: 0; font-size: 1.35rem; }
+.policy-help p { margin: .3rem 0 0; color: var(--muted); font-size: .82rem; }
+
 /* Review and not found */
 .review-page { padding-block: 1.5rem 3rem; }
 .review-shell { display: grid; grid-template-columns: .9fr 1.1fr; gap: 1rem; margin-top: 1rem; }
@@ -248,6 +266,9 @@
   .faq-list details > p { margin: -.3rem 2.5rem 1rem 3.5rem; }
   .contact-banner::after { background: linear-gradient(0deg, rgb(255 255 255 / 96%), rgb(255 255 255 / 75%) 60%, transparent); }
   .contact-banner-copy { justify-content: end; padding-bottom: 1.3rem; }
+  .policy-section { grid-template-columns: 1fr; gap: 1rem; scroll-margin-top: 8.5rem; }
+  .policy-help { align-items: stretch; flex-direction: column; gap: 1rem; }
+  .policy-help .button { width: 100%; }
   .review-shell { grid-template-columns: 1fr; }
 }
 

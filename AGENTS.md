@@ -4,7 +4,7 @@ Kawama is a guest-shopping storefront for home and kitchen products in Ghana. Cu
 
 This repository owns the customer experience. Backend APIs live in kawama-admin-backend; administration screens belong in kawamaAdmin-frontend.
 
-Online product payments and a payment-result page are explicitly in scope. Do not reintroduce the old restriction against storefront payment integration. Keep administration, staff authentication, inventory administration, marketing automation and AI agents outside this repository unless the user requests them.
+Online product payments and a payment-result page are explicitly in scope. Do not reintroduce the old restriction against storefront payment integration. Keep administration, staff authentication, inventory administration, marketing automation and AI provider logic outside this repository. The storefront owns the global Ask Kawama client for the backend shopping-chat API; its model, tools, grounding and OpenRouter secret remain backend responsibilities.
 
 The catalog, review and backend-first Paystack checkout connections exist. The cart owns the payment form, `/checkout` redirects to it, and `/checkout/result` verifies the saved session against backend status. Confirm implementation status from source and keep these instructions current as work lands. Requirements below describe intended behavior, not a claim that every feature is implemented.
 Stack and repository map
@@ -24,7 +24,7 @@ src/app/data	Sample fixtures; not the live catalog or source of genuine reviews
 
 Preserve repository structure and unrelated changes. Prefer existing Angular/browser capabilities over new dependencies.
 Customer journeys
-- /: categories, featured products, searchable catalog, recommendations, approved review highlights and support links.
+- /: compact shopping introduction, categories, non-duplicated featured products and recommendations, approved review highlights and support links.
 - /shop: search, category filtering and sorting.
 - /product/:slug: images, details, specifications, precise prices, availability, reviews, quantity controls and sharing.
 - /cart: persistent items, editable quantities, subtotal and the primary checkout experience.
@@ -32,6 +32,8 @@ Customer journeys
 - /checkout/result: add during payment integration, before the wildcard route.
 - /review/:slug: validated review submission for moderation.
 - /contact and a friendly not-found experience.
+- /policies: verified checkout/privacy disclosures plus clearly identified policy details the business has not published.
+- Global Ask Kawama widget: POST to the backend shopping-chat API, retain the owner-bound session header safely, pass product-page context and link returned product cards to storefront routes.
 Use stable product/review slugs. Use Angular router fragments or explicit scrolling for in-page navigation: bare fragment links can resolve against the root base URL and leave the current route.
 Backend contract
 Treat current backend source, validation schemas, controllers and OpenAPI as authoritative. Inspect them before implementing integrations. Do not invent endpoints or response fields.
@@ -48,6 +50,8 @@ GET	/checkout/sessions/:checkoutToken	Read server payment/fulfillment status
 
 
 Catalog lists provide data and meta.page, meta.limit, meta.total. Normal responses wrap payloads in data. Errors use error.code, error.message, optional error.details and error.requestId.
+
+The AI route is mounted outside the versioned catalog base: POST `/api/ai/chat`. Use the separate environment `aiApiBaseUrl`, send `message`, optional `conversationId`, and optional `context.productId` or `context.productSlug`. Save the 43-character `X-Chat-Session` response header and send it only as a header on later requests with that conversation ID. Never put it in a URL or log it. Render `data.assistantMessage`, canonical `data.products`, and optional `data.suggestedFollowUps`; product cards link by returned slug. The backend owns OpenRouter access and grounding. Never add an OpenRouter key to Angular configuration.
 
 The backend currently has no public product-by-ID lookup, aggregate review-highlights endpoint, payment verification-by-reference endpoint or checkout-cancellation endpoint. Request a deliberate API addition when needed; do not code against an imagined route.
 

@@ -157,6 +157,14 @@ describe('CatalogService', () => {
     expect(results.some((product) => product.id === excludedId)).toBeFalse();
   });
 
+  it('honors additional exclusions so homepage rails do not repeat products', () => {
+    const featuredIds = SAMPLE_PRODUCTS.filter((product) => product.featured && product.inStock)
+      .slice(0, 4)
+      .map((product) => product.id);
+    const results = service.recommend(SAMPLE_PRODUCTS, undefined, [], 4, featuredIds);
+    expect(results.some((product) => featuredIds.includes(product.id))).toBeFalse();
+  });
+
   it('prefers the selected product category before complementary categories', () => {
     const selected = SAMPLE_PRODUCTS[0];
     const results = service.recommend(SAMPLE_PRODUCTS, selected, [], 4);

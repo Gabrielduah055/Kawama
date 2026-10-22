@@ -6,10 +6,11 @@ import { STOREFRONT_CONFIG } from './core/storefront.config';
 import { Category } from './core/store.models';
 import { CartService } from './services/cart.service';
 import { CatalogRepository } from './services/catalog.service';
+import { AskKawamaComponent } from './shared/ask-kawama.component';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive, RouterOutlet, AskKawamaComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })

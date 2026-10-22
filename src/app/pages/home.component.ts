@@ -1,20 +1,19 @@
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { forkJoin, Subscription } from 'rxjs';
 import { Category, Product } from '../core/store.models';
-import { STOREFRONT_CONFIG } from '../core/storefront.config';
 import { CartService } from '../services/cart.service';
 import { CatalogRepository, CatalogService } from '../services/catalog.service';
 import { ReviewHighlight, ReviewService } from '../services/review.service';
+import { ShoppingChatService } from '../services/shopping-chat.service';
 import { LoadingSpinnerComponent } from '../shared/loading-spinner.component';
 import { ProductCardComponent } from '../shared/product-card.component';
 
 @Component({
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, ProductCardComponent, LoadingSpinnerComponent],
+  imports: [CommonModule, RouterLink, ProductCardComponent, LoadingSpinnerComponent],
   templateUrl: './home.component.html',
 })
 export class HomeComponent implements OnInit {
@@ -24,9 +23,6 @@ export class HomeComponent implements OnInit {
   loading = true;
   loadError = false;
   reviewLoadIncomplete = false;
-  searchQuery = '';
-  activeCategory = 'All';
-  readonly config = STOREFRONT_CONFIG;
   private reviewSubscription?: Subscription;
 
   constructor(
@@ -35,6 +31,7 @@ export class HomeComponent implements OnInit {
     private readonly catalogService: CatalogService,
     private readonly reviewService: ReviewService,
     private readonly destroyRef: DestroyRef,
+    readonly shoppingChat: ShoppingChatService,
   ) {}
 
   ngOnInit(): void {
@@ -65,22 +62,13 @@ export class HomeComponent implements OnInit {
     return this.products.filter((product) => product.featured && product.inStock).slice(0, 4);
   }
 
-  get categoryNames(): readonly string[] {
-    return ['All', ...this.categories.map((category) => category.name)];
-  }
-
-  get catalogProducts(): readonly Product[] {
-    return [...this.catalogService.search(this.products, this.searchQuery, this.activeCategory)].sort(
-      (first, second) => Number(second.inStock) - Number(first.inStock) || Number(second.featured) - Number(first.featured),
-    );
-  }
-
   get recommendations(): readonly Product[] {
     return this.catalogService.recommend(
       this.products,
       undefined,
       this.cart.items().map((item) => item.productId),
       4,
+      this.featuredProducts.map((product) => product.id),
     );
   }
 
@@ -88,11 +76,6 @@ export class HomeComponent implements OnInit {
     return this.cart.itemCount()
       ? 'Selected to complement products already in your cart.'
       : 'A useful starting point from the current featured collection.';
-  }
-
-  resetCatalogFilters(): void {
-    this.searchQuery = '';
-    this.activeCategory = 'All';
   }
 
   private loadReviewHighlights(products: readonly Product[]): void {

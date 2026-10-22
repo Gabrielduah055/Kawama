@@ -1,9 +1,9 @@
-<section class="home-hero page-shell relative min-h-[360px] overflow-hidden" aria-labelledby="hero-title">
-  <div class="home-hero-copy relative z-10 flex min-h-[360px] flex-col items-start justify-center">
-    <p class="hero-kicker">Quality kitchenware</p>
-    <h1 id="hero-title">Make every meal feel special</h1>
-    <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Discover durable kitchenware for everyday cooking, thoughtful hosting, and easier routines.</p>
-    <a class="button button-primary" routerLink="/shop">Shop kitchenware <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
+<section class="home-hero page-shell relative overflow-hidden" aria-labelledby="hero-title">
+  <div class="home-hero-copy relative z-10 flex flex-col items-start justify-center">
+    <p class="hero-kicker">Shop Kawama</p>
+    <h1 id="hero-title">Kitchenware for everyday homes</h1>
+    <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Browse current products, compare clear details, and pay securely through Paystack.</p>
+    <a class="button button-primary" routerLink="/shop">Browse all products <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
   </div>
   <div class="home-hero-media">
     <img src="/images/kawama-home-hero-new.png" alt="A black cooking pot and fresh ingredients in a warmly lit kitchen" width="2048" height="768" fetchpriority="high" />
@@ -54,74 +54,17 @@
   </div>
 </section>
 
-<section class="seasonal-banner" aria-labelledby="seasonal-title">
-  <div class="seasonal-media">
-    <img src="/images/kawama-category-cookware-black.png" alt="Black cookware arranged for everyday cooking" width="1680" height="945" loading="lazy" />
-  </div>
-  <div class="page-shell seasonal-copy">
-    <p class="hero-kicker">The Kawama promise</p>
-    <h2 id="seasonal-title">Useful pieces for real kitchens</h2>
-    <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Clear details, practical choices, and direct ordering support when you need it.</p>
-    <a class="button button-primary" routerLink="/shop">Browse the collection <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
-  </div>
-</section>
-
-<section class="home-section catalog-section page-shell" aria-labelledby="catalog-title">
-  <div class="catalog-heading">
-    <div>
-      <h2 id="catalog-title">Shop the collection</h2>
-      <p>Search the current catalog or narrow it by category.</p>
-    </div>
-    <label class="home-catalog-search">
-      <i class="uil uil-search" aria-hidden="true"></i>
-      <span class="sr-only">Search the catalog</span>
-      <input type="search" [(ngModel)]="searchQuery" placeholder="Search products" />
-    </label>
-  </div>
-
-  <div class="category-tabs home-category-tabs" aria-label="Filter the catalog by category">
-    @for (category of categoryNames; track category) {
-      <button type="button" [class.active]="activeCategory === category" [attr.aria-pressed]="activeCategory === category" (click)="activeCategory = category">
-        {{ category }}
-      </button>
-    }
-  </div>
-
-  <div class="catalog-result-summary" aria-live="polite">
-    {{ catalogProducts.length }} {{ catalogProducts.length === 1 ? 'product' : 'products' }}
-  </div>
-
-  @if (catalogProducts.length) {
-  <div class="home-catalog-grid">
-    @for (product of catalogProducts; track product.id) {
-      <app-product-card [product]="product" />
-    }
-  </div>
-  } @else {
-    <div class="empty-state compact-empty">
-      <i class="uil uil-search" aria-hidden="true"></i>
-      <h3>No products match that search.</h3>
-      <p>Try another word or clear the selected category.</p>
-      <button class="button button-primary" type="button" (click)="resetCatalogFilters()">Clear filters</button>
-    </div>
-  }
-</section>
-
 <section class="support-band" aria-labelledby="support-title">
   <div class="page-shell support-band-inner">
-    <div class="support-icon" aria-hidden="true"><i class="uil uil-whatsapp"></i></div>
+    <div class="support-icon" aria-hidden="true"><i class="uil uil-comment-alt-dots"></i></div>
     <div>
       <p class="section-label">Need help choosing?</p>
-      <h2 id="support-title">Chat with us about your order</h2>
-      <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Get product guidance, availability information, and ordering support.</p>
+      <h2 id="support-title">Ask Kawama while you shop</h2>
+      <p class="text-[15px]! font-medium! leading-7! sm:text-base!">Compare current products, prices, availability, and checkout details.</p>
     </div>
-    @if (config.whatsappNumber) {
-      <a class="button button-primary" [href]="config.whatsappUrl" target="_blank" rel="noopener">
-        <i class="uil uil-whatsapp" aria-hidden="true"></i> Chat on WhatsApp <i class="uil uil-arrow-right" aria-hidden="true"></i>
-      </a>
-    } @else {
-      <a class="button button-primary" routerLink="/contact">Get ordering help <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
-    }
+    <button class="button button-primary" type="button" (click)="shoppingChat.openPanel()">
+      Ask Kawama <i class="uil uil-arrow-right" aria-hidden="true"></i>
+    </button>
   </div>
 </section>
 
