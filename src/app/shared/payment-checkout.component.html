@@ -1,0 +1,125 @@
+<form id="cart-checkout" class="cart-checkout" [formGroup]="checkoutForm" (ngSubmit)="submit()" novalidate>
+  <section class="checkout-details-card" aria-labelledby="cart-checkout-title">
+    <p class="section-label">Secure checkout</p>
+    <h2 id="cart-checkout-title">Customer and delivery details</h2>
+    @if (activeCheckout) {
+      <div class="active-checkout-note" role="status">
+        <strong>These details belong to the payment already in progress.</strong>
+        <p>They are locked so changes cannot accidentally open a different order. New cart additions stay available for your next purchase.</p>
+      </div>
+    } @else {
+      <p>Pay for your products securely with Paystack. Delivery charges are confirmed separately after payment.</p>
+    }
+
+    <label class="form-field">
+      <span>Full name <em>*</em></span>
+      <span class="input-with-icon"><i class="uil uil-user" aria-hidden="true"></i><input type="text" formControlName="fullName" autocomplete="name" maxlength="120" placeholder="Enter your full name" /></span>
+      @if (checkoutForm.controls.fullName.touched && checkoutForm.controls.fullName.invalid) {<small class="field-error">Enter 2 to 120 characters.</small>}
+    </label>
+    <label class="form-field">
+      <span>Email address <em>*</em></span>
+      <span class="input-with-icon"><i class="uil uil-envelope" aria-hidden="true"></i><input type="email" formControlName="email" autocomplete="email" maxlength="254" placeholder="you@example.com" /></span>
+      @if (checkoutForm.controls.email.touched && checkoutForm.controls.email.invalid) {<small class="field-error">Enter a valid email address.</small>}
+    </label>
+    <label class="form-field">
+      <span>WhatsApp number <em>*</em></span>
+      <span class="input-with-icon"><i class="uil uil-whatsapp" aria-hidden="true"></i><input type="tel" formControlName="whatsappNumber" autocomplete="tel" inputmode="tel" maxlength="25" placeholder="024 000 0000 or +233..." /></span>
+      @if (checkoutForm.controls.whatsappNumber.touched && checkoutForm.controls.whatsappNumber.invalid) {<small class="field-error">Enter a valid Ghana local or international number.</small>}
+    </label>
+    <label class="form-field">
+      <span>Delivery area or address <em>*</em></span>
+      <span class="input-with-icon textarea-icon"><i class="uil uil-map-marker" aria-hidden="true"></i><textarea rows="4" formControlName="deliveryAddress" autocomplete="street-address" maxlength="500" placeholder="Enter your delivery area or full address"></textarea></span>
+      @if (checkoutForm.controls.deliveryAddress.touched && checkoutForm.controls.deliveryAddress.invalid) {<small class="field-error">Enter 5 to 500 characters.</small>}
+    </label>
+    <label class="form-field">
+      <span>Order notes <small>(Optional)</small></span>
+      <span class="input-with-icon textarea-icon"><i class="uil uil-file-alt" aria-hidden="true"></i><textarea rows="3" formControlName="orderNotes" maxlength="500" placeholder="Landmark, preferred contact time, or other instructions"></textarea></span>
+    </label>
+    <label class="checkout-consent">
+      <input type="checkbox" formControlName="whatsappConsent" />
+      <span>I agree that Kawama may use this WhatsApp number for my receipt and delivery coordination. <em>*</em></span>
+    </label>
+    @if (checkoutForm.controls.whatsappConsent.touched && checkoutForm.controls.whatsappConsent.invalid) {<small class="field-error">Consent is required to complete checkout.</small>}
+  </section>
+
+  <aside class="order-summary-card cart-order-handoff" aria-labelledby="cart-payment-title">
+    <p class="section-label">{{ activeCheckout ? 'Payment in progress' : 'Order summary' }}</p>
+    <h2 id="cart-payment-title">{{ activeCheckout?.session?.orderNumber || 'Pay with Paystack' }}</h2>
+    @if (activeCheckout) {
+      <p>This is the exact order linked to the Paystack payment. Its saved items and customer details are shown here.</p>
+    } @else {
+      <p>You will continue to Paystack in this tab. Kawama confirms payment only from the secure backend status.</p>
+    }
+
+    <div class="checkout-lines">
+      @if (activeCheckout; as active) {
+        @for (item of active.cartSnapshot; track item.productId) {
+          <article>
+            <div class="checkout-line-image">
+              @if (item.image; as image) {<img [src]="image.src" [alt]="image.alt" width="110" height="90" />} @else {<i class="uil uil-image-v" aria-hidden="true"></i>}
+            </div>
+            <div><strong>{{ item.name || 'Saved product' }}</strong><span>Qty: {{ item.quantity }}</span></div>
+            @if (snapshotLineTotal(item); as total) {
+              <strong>{{ total | currency: (item.currency || config.currencyCode) : 'symbol-narrow' : '1.2-2' : config.locale }}</strong>
+            }
+          </article>
+        }
+      } @else {
+        @for (line of lines; track line.product.id) {
+          <article>
+            <div class="checkout-line-image">
+              @if (line.product.images[0]; as image) {<img [src]="image.src" [alt]="image.alt" width="110" height="90" />} @else {<i class="uil uil-image-v" aria-hidden="true"></i>}
+            </div>
+            <div><strong>{{ line.product.name }}</strong><span>Qty: {{ line.quantity }}</span></div>
+            <strong>{{ lineTotal(line) | currency: line.product.currency : 'symbol-narrow' : '1.2-2' : config.locale }}</strong>
+          </article>
+        }
+      }
+    </div>
+    <div class="summary-row"><span>Items</span><strong>{{ activeCheckout ? activeItemCount : itemCount }}</strong></div>
+    <div class="summary-row"><span>Delivery fee</span><span>Confirmed separately</span></div>
+    <div class="summary-total">
+      <strong>Product total</strong>
+      <strong>{{ pesewasToCedis(activeCheckout ? activeAmountPesewas : subtotalPesewas) | currency: config.currencyCode : 'symbol-narrow' : '1.2-2' : config.locale }}</strong>
+    </div>
+
+    @if (activeCheckout && !activeCartMatches) {
+      <p class="checkout-context-note" role="status">Your current cart is different. Those changes are not part of this payment and will remain for a later purchase.</p>
+    }
+
+    @if (!activeCheckout && blockedItemCount > 0) {
+      <p class="checkout-warning" role="alert">{{ blockedItemCount }} unavailable {{ blockedItemCount === 1 ? 'item is' : 'items are' }} blocking checkout. Remove {{ blockedItemCount === 1 ? 'it' : 'them' }} above.</p>
+    }
+
+    @if (priceMismatch && initializedSession; as session) {
+      <section class="price-mismatch" role="alert" aria-labelledby="price-change-title">
+        <h3 id="price-change-title">The product total changed</h3>
+        <p>Your submitted cart showed {{ pesewasToCedis(submittedAmountPesewas) | currency: config.currencyCode : 'symbol-narrow' : '1.2-2' : config.locale }}, while the current server total is {{ pesewasToCedis(session.amountPesewas) | currency: session.currency : 'symbol-narrow' : '1.2-2' : config.locale }}.</p>
+        <button class="button button-primary" type="button" (click)="continueToPaystack()">Accept total and continue</button>
+      </section>
+    } @else if (activeCheckout?.session?.paymentStatus === 'pending' && activeCheckout?.session?.payment) {
+      <button class="button button-primary checkout-submit" type="button" [disabled]="submitting" (click)="resumeInitializedCheckout()">
+        <i class="uil uil-lock" aria-hidden="true"></i>{{ submitting ? 'Checking payment...' : 'Check and continue to Paystack' }}
+      </button>
+    } @else if (activeCheckout && !activeCheckout.session) {
+      <button class="button button-primary checkout-submit" type="button" [disabled]="submitting" (click)="retryCheckout()">
+        <i class="uil uil-lock" aria-hidden="true"></i>{{ submitting ? 'Connecting to Paystack...' : 'Try this payment again' }}
+      </button>
+    } @else if (activeCheckout) {
+      <button class="button button-primary checkout-submit" type="button" (click)="viewPaymentStatus()">
+        View payment status
+      </button>
+    } @else {
+      <button class="button button-primary checkout-submit" type="submit" [disabled]="submitting || blockedItemCount > 0 || !lines.length">
+        <i class="uil uil-lock" aria-hidden="true"></i>{{ submitting ? 'Preparing secure payment...' : 'Pay securely with Paystack' }}
+      </button>
+    }
+
+    @if (submitted && checkoutForm.invalid) {<p class="status-message error" role="alert">Check the highlighted customer details.</p>}
+    @if (errorMessage) {
+      <div class="checkout-error" role="alert"><p>{{ errorMessage }}</p></div>
+    }
+
+    <div class="payment-next"><i class="uil uil-shield-check" aria-hidden="true"></i><div><strong>Secure payment handoff</strong><p>Paystack collects payment details. Kawama does not receive or store your card information.</p></div></div>
+  </aside>
+</form>

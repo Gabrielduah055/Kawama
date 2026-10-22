@@ -42,4 +42,51 @@ describe('ReviewService', () => {
     expect(status).toBe('pending');
     expect(service.forProduct('prd-bowl-02')).toEqual([]);
   });
+
+  it('finds a homepage highlight beyond the first six products with bounded requests', () => {
+    const products = Array.from({ length: 7 }, (_, index) => ({
+      ...SAMPLE_PRODUCT,
+      id: `product-${index + 1}`,
+      slug: `product-${index + 1}`,
+      inStock: true,
+    }));
+    let highlightedProductId = '';
+    service.getHighlights(products, 3, 4).subscribe((result) => {
+      highlightedProductId = result.highlights[0]?.product.id ?? '';
+    });
+
+    const initialRequests = http.match((request) => request.url.includes('/reviews'));
+    expect(initialRequests.length).toBe(4);
+    initialRequests.forEach((request) => request.flush({ data: [] }));
+    for (let index = 4; index < products.length; index += 1) {
+      const product = products[index];
+      const request = http.expectOne(
+        buildApiUrl(environment.apiBaseUrl, environment.apiEndpoints.productReviews, { productId: product.id }),
+      );
+      request.flush({
+        data:
+          index === 6
+            ? [{ id: 'review-seven', productId: product.id, reviewerName: 'Abena', rating: 5, comment: 'Excellent quality.', createdAt: '2026-02-01T00:00:00.000Z' }]
+            : [],
+      });
+    }
+
+    expect(highlightedProductId).toBe('product-7');
+  });
 });
+
+const SAMPLE_PRODUCT = {
+  id: 'sample-product',
+  slug: 'sample-product',
+  name: 'Sample product',
+  category: 'Cookware',
+  shortDescription: 'A sample product.',
+  description: 'A sample product for review tests.',
+  price: 12.5,
+  currency: 'GHS' as const,
+  images: [],
+  inStock: true,
+  featured: false,
+  complementaryCategories: [],
+  details: [],
+};

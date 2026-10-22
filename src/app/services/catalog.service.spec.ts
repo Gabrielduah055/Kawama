@@ -30,6 +30,93 @@ describe('CatalogService', () => {
     expect(products.length).toBe(SAMPLE_PRODUCTS.length);
   });
 
+  it('shares completed cached reads until an explicit refresh is requested', () => {
+    let firstResult: readonly Product[] = [];
+    let cachedResult: readonly Product[] = [];
+    service.getProducts().subscribe((products) => (firstResult = products));
+    http.expectOne((request) => request.params.get('page') === '1').flush({
+      data: [SAMPLE_PRODUCTS[0]],
+      meta: { page: 1, limit: 100, total: 1 },
+    });
+
+    service.getProducts().subscribe((products) => (cachedResult = products));
+    http.expectNone((request) => request.url === buildApiUrl(environment.apiBaseUrl, environment.apiEndpoints.products));
+    expect(cachedResult).toEqual(firstResult);
+  });
+
+  it('forces a new request and publishes changed prices and availability', () => {
+    service.getProducts().subscribe();
+    http.expectOne((request) => request.params.get('page') === '1').flush({
+      data: [SAMPLE_PRODUCTS[0]],
+      meta: { page: 1, limit: 100, total: 1 },
+    });
+
+    const changed = { ...SAMPLE_PRODUCTS[0], price: SAMPLE_PRODUCTS[0].price + 25, inStock: false };
+    let refreshed: readonly Product[] = [];
+    service.refreshProducts().subscribe((products) => (refreshed = products));
+    http.expectOne((request) => request.params.get('page') === '1').flush({
+      data: [changed],
+      meta: { page: 1, limit: 100, total: 1 },
+    });
+
+    expect(refreshed[0].price).toBe(changed.price);
+    expect(refreshed[0].inStock).toBeFalse();
+  });
+
+  it('does not publish a partial refreshed catalog when a later page fails', () => {
+    let emissions = 0;
+    let failed = false;
+    service.refreshProducts().subscribe({
+      next: () => emissions += 1,
+      error: () => (failed = true),
+    });
+    http.expectOne((request) => request.params.get('page') === '1').flush({
+      data: [SAMPLE_PRODUCTS[0]],
+      meta: { page: 1, limit: 100, total: 101 },
+    });
+    http.expectOne((request) => request.params.get('page') === '2').flush(
+      { error: { code: 'CATALOG_UNAVAILABLE' } },
+      { status: 503, statusText: 'Unavailable' },
+    );
+
+    expect(emissions).toBe(0);
+    expect(failed).toBeTrue();
+  });
+
+  it('loads every catalog page before publishing a deduplicated result', () => {
+    const first = SAMPLE_PRODUCTS[0];
+    const second = { ...SAMPLE_PRODUCTS[1], id: 'page-two-product' };
+    const third = { ...SAMPLE_PRODUCTS[2], id: 'page-three-product' };
+    let emissions = 0;
+    let products: readonly Product[] = [];
+
+    service.getProducts().subscribe((value) => {
+      emissions += 1;
+      products = value;
+    });
+    http.expectOne((request) => request.params.get('page') === '1').flush({
+      data: [first],
+      meta: { page: 1, limit: 100, total: 201 },
+    });
+    expect(emissions).toBe(0);
+
+    const remaining = http.match(
+      (request) => request.url === buildApiUrl(environment.apiBaseUrl, environment.apiEndpoints.products),
+    );
+    expect(remaining.length).toBe(2);
+    remaining.find((request) => request.request.params.get('page') === '3')!.flush({
+      data: [third, first],
+      meta: { page: 3, limit: 100, total: 201 },
+    });
+    remaining.find((request) => request.request.params.get('page') === '2')!.flush({
+      data: [second],
+      meta: { page: 2, limit: 100, total: 201 },
+    });
+
+    expect(emissions).toBe(1);
+    expect(products.map((product) => product.id)).toEqual([first.id, second.id, third.id]);
+  });
+
   it('loads managed categories for navigation and filters', () => {
     let categoryNames: readonly string[] = [];
     service.getCategories().subscribe((categories) => (categoryNames = categories.map((category) => category.name)));
@@ -68,6 +155,14 @@ describe('CatalogService', () => {
     const excludedId = SAMPLE_PRODUCTS[1].id;
     const results = service.recommend(SAMPLE_PRODUCTS, undefined, [excludedId], 6);
     expect(results.some((product) => product.id === excludedId)).toBeFalse();
+  });
+
+  it('honors additional exclusions so homepage rails do not repeat products', () => {
+    const featuredIds = SAMPLE_PRODUCTS.filter((product) => product.featured && product.inStock)
+      .slice(0, 4)
+      .map((product) => product.id);
+    const results = service.recommend(SAMPLE_PRODUCTS, undefined, [], 4, featuredIds);
+    expect(results.some((product) => featuredIds.includes(product.id))).toBeFalse();
   });
 
   it('prefers the selected product category before complementary categories', () => {

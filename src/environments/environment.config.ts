@@ -3,6 +3,9 @@ export const apiEndpoints = {
   productDetail: '/products/:slug',
   categories: '/categories',
   productReviews: '/products/:productId/reviews',
+  checkoutSessions: '/checkout/sessions',
+  checkoutStatus: '/checkout/sessions/:checkoutToken',
+  shoppingChat: '/ai/chat',
 } as const;
 
 export const externalEndpoints = {

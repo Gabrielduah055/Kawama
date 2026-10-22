@@ -2,6 +2,36 @@
 
 The storefront reads its catalog, managed categories, and approved reviews from the Kawama API. Both local development and production use the Render service configured in `src/environments/environment.ts` and `src/environments/environment.production.ts`. Update both URLs if the Render service name changes.
 
+## Paystack checkout
+
+The cart initializes product payment with `POST /api/v1/checkout/sessions` and checks the result with `GET /api/v1/checkout/sessions/:checkoutToken`. The browser sends product IDs and quantities only. The backend recalculates the product total, reserves inventory, creates the Paystack transaction, and returns a hosted `authorizationUrl`.
+
+Checkout uses Paystack's hosted page in the same tab. This frontend does not use the Paystack browser SDK, a public key, or any secret key. A versioned pending checkout and its idempotency key are kept in `sessionStorage` so uncertain retries reuse the same request instead of creating a second charge.
+
+The result route is:
+
+```text
+http://localhost:4200/checkout/result
+```
+
+Set the backend `PAYSTACK_CALLBACK_URL` to that URL for local test-mode work, or to the corresponding deployed storefront URL in production. In the Paystack dashboard, configure the backend webhook as:
+
+```text
+https://YOUR-API-HOST/api/v1/webhooks/paystack
+```
+
+The Angular app must never call the webhook. A redirect or `reference`/`trxref` query parameter is not payment proof; only the backend's signed webhook, provider verification, and checkout status can mark an order paid. Use Paystack test mode for development and do not make live charges while testing.
+
+Product payment excludes delivery. Delivery charges are quoted separately and coordinated after payment. WhatsApp is an optional post-payment contact action and a missing business WhatsApp number does not block checkout.
+
+## Ask Kawama
+
+The global shopping widget calls `POST /api/ai/chat` on the same backend origin. The first request omits `X-Chat-Session`; the frontend saves the returned opaque session header and `conversationId` in guarded `sessionStorage` for later turns. Product pages send the current product slug as request context, and canonical product cards returned by the backend route to `/product/:slug`.
+
+The OpenRouter API key, model selection, conversation retention and factual grounding remain on the backend. Configure `AI_CHAT_ENABLED`, `OPENROUTER_API_KEY`, the approved store-policy values and CORS exposure for `X-Chat-Session` in `kawama-admin-backend`. Never add the provider key to this Angular project.
+
+The footer links to the current Terms, Privacy, Delivery & returns and FAQ disclosures. The repository does not contain a verified legal seller identity, business contact channel, complete delivery policy, privacy notice, terms, or return/refund rules. Those details need business and legal approval before the policy content can be considered complete.
+
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.25.
 
 ## Development server

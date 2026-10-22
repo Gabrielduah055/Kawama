@@ -25,5 +25,20 @@ describe('CartService', () => {
     localStorage.setItem('kawama.cart.v1', '{not valid');
     expect(new CartService().items()).toEqual([]);
   });
+
+  it('subtracts only the paid snapshot once and preserves later quantities', () => {
+    const service = new CartService();
+    service.add('prd-pan-01', 4);
+    service.add('prd-bowl-02', 1);
+
+    expect(service.reconcilePurchasedItems('checkout-token-1234', [{ productId: 'prd-pan-01', quantity: 2 }])).toBeTrue();
+    expect(service.items()).toEqual([
+      { productId: 'prd-pan-01', quantity: 2 },
+      { productId: 'prd-bowl-02', quantity: 1 },
+    ]);
+
+    expect(service.reconcilePurchasedItems('checkout-token-1234', [{ productId: 'prd-pan-01', quantity: 2 }])).toBeFalse();
+    expect(service.items()[0].quantity).toBe(2);
+  });
 });
 

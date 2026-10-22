@@ -2,6 +2,7 @@
 @import "./styles/storefront.css";
 @import "./styles/pages.css";
 @import "./styles/kawama-home.css";
+@import "./styles/ask-kawama.css";
 
 @theme {
   --font-sans: "Montserrat", "Segoe UI", Arial, sans-serif;

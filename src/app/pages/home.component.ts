@@ -1,24 +1,19 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, DestroyRef, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { catchError, forkJoin, map, of } from 'rxjs';
-import { Category, Product, Review } from '../core/store.models';
-import { STOREFRONT_CONFIG } from '../core/storefront.config';
+import { forkJoin, Subscription } from 'rxjs';
+import { Category, Product } from '../core/store.models';
 import { CartService } from '../services/cart.service';
 import { CatalogRepository, CatalogService } from '../services/catalog.service';
-import { ReviewService } from '../services/review.service';
+import { ReviewHighlight, ReviewService } from '../services/review.service';
+import { ShoppingChatService } from '../services/shopping-chat.service';
 import { LoadingSpinnerComponent } from '../shared/loading-spinner.component';
 import { ProductCardComponent } from '../shared/product-card.component';
 
-interface ReviewHighlight {
-  readonly product: Product;
-  readonly review: Review;
-}
-
 @Component({
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, ProductCardComponent, LoadingSpinnerComponent],
+  imports: [CommonModule, RouterLink, ProductCardComponent, LoadingSpinnerComponent],
   templateUrl: './home.component.html',
 })
 export class HomeComponent implements OnInit {
@@ -27,15 +22,16 @@ export class HomeComponent implements OnInit {
   reviewHighlights: readonly ReviewHighlight[] = [];
   loading = true;
   loadError = false;
-  searchQuery = '';
-  activeCategory = 'All';
-  readonly config = STOREFRONT_CONFIG;
+  reviewLoadIncomplete = false;
+  private reviewSubscription?: Subscription;
 
   constructor(
     readonly cart: CartService,
     private readonly catalogRepository: CatalogRepository,
     private readonly catalogService: CatalogService,
     private readonly reviewService: ReviewService,
+    private readonly destroyRef: DestroyRef,
+    readonly shoppingChat: ShoppingChatService,
   ) {}
 
   ngOnInit(): void {
@@ -66,22 +62,13 @@ export class HomeComponent implements OnInit {
     return this.products.filter((product) => product.featured && product.inStock).slice(0, 4);
   }
 
-  get categoryNames(): readonly string[] {
-    return ['All', ...this.categories.map((category) => category.name)];
-  }
-
-  get catalogProducts(): readonly Product[] {
-    return [...this.catalogService.search(this.products, this.searchQuery, this.activeCategory)].sort(
-      (first, second) => Number(second.inStock) - Number(first.inStock) || Number(second.featured) - Number(first.featured),
-    );
-  }
-
   get recommendations(): readonly Product[] {
     return this.catalogService.recommend(
       this.products,
       undefined,
       this.cart.items().map((item) => item.productId),
       4,
+      this.featuredProducts.map((product) => product.id),
     );
   }
 
@@ -91,31 +78,18 @@ export class HomeComponent implements OnInit {
       : 'A useful starting point from the current featured collection.';
   }
 
-  resetCatalogFilters(): void {
-    this.searchQuery = '';
-    this.activeCategory = 'All';
-  }
-
   private loadReviewHighlights(products: readonly Product[]): void {
-    const candidates = products.filter((product) => product.inStock).slice(0, 6);
-    if (!candidates.length) return;
+    this.reviewSubscription?.unsubscribe();
+    this.reviewHighlights = [];
+    this.reviewLoadIncomplete = false;
+    if (!products.some((product) => product.inStock)) return;
 
-    forkJoin(
-      candidates.map((product) =>
-        this.reviewService.getByProductId(product.id).pipe(
-          map((reviews) => reviews.map((review) => ({ product, review }))),
-          catchError(() => of([] as readonly ReviewHighlight[])),
-        ),
-      ),
-    ).subscribe((groups) => {
-      this.reviewHighlights = groups
-        .flat()
-        .sort(
-          (first, second) =>
-            second.review.rating - first.review.rating ||
-            second.review.createdAt.localeCompare(first.review.createdAt),
-        )
-        .slice(0, 3);
-    });
+    this.reviewSubscription = this.reviewService
+      .getHighlights(products)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(({ highlights, failedProductCount }) => {
+        this.reviewHighlights = highlights;
+        this.reviewLoadIncomplete = failedProductCount > 0;
+      });
   }
 }

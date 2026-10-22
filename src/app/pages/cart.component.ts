@@ -1,60 +1,55 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { CheckoutDetails, OrderDraft, OrderLine, Product } from '../core/store.models';
+import { cedisToPesewas, orderLinesTotalPesewas, pesewasToCedis } from '../core/money';
+import { CartItem, OrderLine, Product } from '../core/store.models';
 import { STOREFRONT_CONFIG } from '../core/storefront.config';
 import { CartService } from '../services/cart.service';
 import { CatalogRepository } from '../services/catalog.service';
-import { WhatsAppService } from '../services/whatsapp.service';
 import { LoadingSpinnerComponent } from '../shared/loading-spinner.component';
+import { PaymentCheckoutComponent } from '../shared/payment-checkout.component';
 
 @Component({
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, LoadingSpinnerComponent],
+  imports: [CommonModule, RouterLink, LoadingSpinnerComponent, PaymentCheckoutComponent],
   templateUrl: './cart.component.html',
 })
 export class CartComponent implements OnInit {
   products: readonly Product[] = [];
   loading = true;
   loadError = false;
-  submitted = false;
   readonly config = STOREFRONT_CONFIG;
-  readonly checkoutForm;
+  readonly pesewasToCedis = pesewasToCedis;
 
   constructor(
     readonly cart: CartService,
     private readonly catalog: CatalogRepository,
-    private readonly whatsapp: WhatsAppService,
-    formBuilder: FormBuilder,
-  ) {
-    this.checkoutForm = formBuilder.nonNullable.group({
-      customerName: ['', [Validators.required, Validators.minLength(2)]],
-      phone: ['', [Validators.required, Validators.pattern(/^[+0-9][0-9\s-]{7,19}$/)]],
-      deliveryAddress: ['', [Validators.required, Validators.minLength(4)]],
-      note: ['', [Validators.maxLength(300)]],
-    });
-  }
+  ) {}
 
   ngOnInit(): void {
     this.load();
   }
 
-  load(): void {
-    this.loading = true;
-    this.loadError = false;
-    this.catalog.getProducts().subscribe({
+  load(forceRefresh = false): void {
+    const hasCatalog = this.products.length > 0;
+    this.loading = !hasCatalog;
+    if (!hasCatalog) this.loadError = false;
+    const productsRequest = forceRefresh ? this.catalog.refreshProducts() : this.catalog.getProducts();
+    productsRequest.subscribe({
       next: (products) => {
         this.products = products;
         this.loading = false;
-        const validIds = new Set(products.filter((product) => product.inStock).map((product) => product.id));
-        this.cart.items().filter((item) => !validIds.has(item.productId)).forEach((item) => this.cart.remove(item.productId));
+        this.loadError = false;
       },
       error: () => {
         this.loading = false;
-        this.loadError = true;
+        if (!hasCatalog) this.loadError = true;
       },
     });
+  }
+
+  refreshCatalog(): void {
+    this.load(true);
   }
 
   get lines(): readonly OrderLine[] {
@@ -64,25 +59,28 @@ export class CartComponent implements OnInit {
     });
   }
 
-  get subtotal(): number {
-    return this.lines.reduce((sum, line) => sum + line.product.price * line.quantity, 0);
+  get checkoutLines(): readonly OrderLine[] {
+    return this.lines.filter((line) => line.product.inStock);
+  }
+
+  get missingItems(): readonly CartItem[] {
+    const productIds = new Set(this.products.map((product) => product.id));
+    return this.cart.items().filter((item) => !productIds.has(item.productId));
+  }
+
+  get blockedItemCount(): number {
+    return this.missingItems.length + this.lines.filter((line) => !line.product.inStock).length;
+  }
+
+  get subtotalPesewas(): number {
+    return orderLinesTotalPesewas(this.checkoutLines);
   }
 
   adjust(line: OrderLine, delta: number): void {
     this.cart.setQuantity(line.product.id, line.quantity + delta);
   }
 
-  checkout(): void {
-    this.submitted = true;
-    if (this.checkoutForm.invalid || !this.lines.length || !this.config.whatsappNumber) {
-      this.checkoutForm.markAllAsTouched();
-      return;
-    }
-
-    const customer: CheckoutDetails = this.checkoutForm.getRawValue();
-    const order: OrderDraft = { lines: this.lines, customer, subtotal: this.subtotal };
-    if (typeof window !== 'undefined') {
-      window.open(this.whatsapp.buildUrl(order), '_blank', 'noopener,noreferrer');
-    }
+  lineTotal(line: OrderLine): number {
+    return pesewasToCedis(cedisToPesewas(line.product.price) * line.quantity);
   }
 }

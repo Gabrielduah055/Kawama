@@ -1,0 +1,109 @@
+<div class="ask-kawama">
+  @if (chat.panelOpen()) {
+    <section id="ask-kawama-panel" class="ask-kawama-panel" aria-labelledby="ask-kawama-title">
+      <header class="ask-kawama-header">
+        <div>
+          <span class="ask-kawama-mark" aria-hidden="true"><i class="uil uil-comment-alt-dots"></i></span>
+          <div>
+            <h2 id="ask-kawama-title">Ask Kawama</h2>
+            <p>Shopping help from the current catalog</p>
+          </div>
+        </div>
+        <button type="button" aria-label="Close Ask Kawama" (click)="closePanel()">
+          <i class="uil uil-times" aria-hidden="true"></i>
+        </button>
+      </header>
+
+      <div #messageList class="ask-kawama-messages" role="log" aria-live="polite" aria-relevant="additions">
+        @for (message of messages(); track message.id) {
+          <article
+            class="ask-kawama-message"
+            [class.user-message]="message.role === 'user'"
+            [class.error-message]="message.error"
+            [attr.role]="message.error ? 'alert' : null"
+          >
+            <p>{{ message.text }}</p>
+            @if (message.retryMessage; as retryMessage) {
+              <button
+                class="ask-kawama-retry"
+                type="button"
+                [disabled]="sending()"
+                (click)="retry(retryMessage, message.restartBeforeRetry)"
+              >
+                {{ message.restartBeforeRetry ? 'Start new chat and retry' : 'Try again' }}
+              </button>
+            }
+            @if (message.products?.length) {
+              <div class="ask-kawama-products" aria-label="Suggested products">
+                @for (product of message.products; track product.id) {
+                  <a [routerLink]="['/product', product.slug]" (click)="closePanel()">
+                    @if (product.image; as image) {
+                      <img [src]="image.src" [alt]="image.alt" width="72" height="72" loading="lazy" />
+                    } @else {
+                      <span class="ask-product-placeholder" aria-hidden="true"><i class="uil uil-image-v"></i></span>
+                    }
+                    <span>
+                      <strong>{{ product.name }}</strong>
+                      <small>{{ product.price | currency: product.currency : 'symbol-narrow' : '1.2-2' : 'en-GH' }}</small>
+                      <em [class.out-of-stock]="product.availability === 'out_of_stock'">
+                        {{ product.availability === 'in_stock' ? 'In stock' : product.availability === 'low_stock' ? 'Low stock' : 'Out of stock' }}
+                      </em>
+                    </span>
+                    <i class="uil uil-angle-right-b" aria-hidden="true"></i>
+                  </a>
+                }
+              </div>
+            }
+            @if (message.suggestedFollowUps?.length) {
+              <div class="ask-kawama-followups" aria-label="Suggested questions">
+                @for (followUp of message.suggestedFollowUps; track followUp) {
+                  <button type="button" [disabled]="sending()" (click)="submit(followUp)">{{ followUp }}</button>
+                }
+              </div>
+            }
+          </article>
+        }
+        @if (sending()) {
+          <div class="ask-kawama-thinking" role="status">
+            <span></span><span></span><span></span><span class="sr-only">Ask Kawama is checking the catalog</span>
+          </div>
+        }
+      </div>
+
+      <form class="ask-kawama-form" (ngSubmit)="submit()">
+        <label for="ask-kawama-message">Your question</label>
+        <div>
+          <textarea
+            #messageInput
+            id="ask-kawama-message"
+            name="ask-kawama-message"
+            [(ngModel)]="messageText"
+            maxlength="1500"
+            rows="1"
+            placeholder="What are you looking for?"
+            [disabled]="sending()"
+            (keydown)="handleInputKeydown($event)"
+          ></textarea>
+          <button type="submit" aria-label="Send message" [disabled]="sending() || !messageText.trim()">
+            <i class="uil uil-message" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="ask-kawama-form-meta">
+          <span>Enter to send. Shift + Enter for a new line.</span>
+          <button type="button" (click)="startOver()">Start over</button>
+        </div>
+      </form>
+    </section>
+  }
+
+  <button
+    class="ask-kawama-launcher"
+    type="button"
+    aria-controls="ask-kawama-panel"
+    [attr.aria-expanded]="chat.panelOpen()"
+    (click)="togglePanel()"
+  >
+    <i class="uil" [class.uil-times]="chat.panelOpen()" [class.uil-comment-alt-dots]="!chat.panelOpen()" aria-hidden="true"></i>
+    <span>{{ chat.panelOpen() ? 'Close' : 'Ask Kawama' }}</span>
+  </button>
+</div>
