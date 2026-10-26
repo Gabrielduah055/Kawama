@@ -38,7 +38,7 @@
                 @for (product of message.products; track product.id) {
                   <a [routerLink]="['/product', product.slug]" (click)="closePanel()">
                     @if (product.image; as image) {
-                      <img [src]="image.src" [alt]="image.alt" width="72" height="72" loading="lazy" />
+                      <img [src]="image.src" [alt]="image.alt" width="72" height="72" loading="lazy" decoding="async" />
                     } @else {
                       <span class="ask-product-placeholder" aria-hidden="true"><i class="uil uil-image-v"></i></span>
                     }

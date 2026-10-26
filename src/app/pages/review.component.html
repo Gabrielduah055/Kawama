@@ -10,7 +10,7 @@
     <div class="review-shell">
       <aside class="review-product">
         @if (product.images[0]; as image) {
-          <img [src]="image.src" [alt]="image.alt" width="700" height="560" />
+          <img [src]="image.src" [alt]="image.alt" width="700" height="560" decoding="async" />
         } @else {
           <div class="product-image-placeholder" aria-label="Product image not supplied"><i class="uil uil-image-v" aria-hidden="true"></i><small>Image coming soon</small></div>
         }

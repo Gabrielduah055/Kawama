@@ -12,7 +12,7 @@
     }
 
     @if (product.images[0]; as image) {
-      <img class="product-image" [src]="image.src" [alt]="image.alt" width="640" height="480" loading="lazy" />
+      <img class="product-image" [src]="image.src" [alt]="image.alt" width="640" height="480" loading="lazy" decoding="async" />
     } @else {
       <span class="product-image-placeholder" aria-label="Product image not supplied">
         <i class="uil uil-image-v" aria-hidden="true"></i>
