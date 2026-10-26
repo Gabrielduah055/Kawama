@@ -20,6 +20,7 @@
               [class.detail-media-image-contained]="activeImageFit === 'contain'"
               width="900"
               height="720"
+              decoding="async"
               (load)="updateImageFit($event)"
             />
           } @else {
@@ -30,7 +31,7 @@
           <div class="detail-thumbnails" aria-label="Product images">
             @for (image of product.images; track image.src; let index = $index) {
               <button type="button" [class.active]="activeImageIndex === index" (click)="selectImage(index)" [attr.aria-label]="'Show image ' + (index + 1)">
-                <img [src]="image.src" alt="" width="160" height="120" />
+                <img [src]="image.src" alt="" width="160" height="120" loading="lazy" decoding="async" />
               </button>
             }
           </div>

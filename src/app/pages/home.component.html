@@ -6,7 +6,7 @@
     <a class="button button-primary" routerLink="/shop">Browse all products <i class="uil uil-arrow-right" aria-hidden="true"></i></a>
   </div>
   <div class="home-hero-media">
-    <img src="/images/kawama-home-hero-new.png" alt="A black cooking pot and fresh ingredients in a warmly lit kitchen" width="2048" height="768" fetchpriority="high" />
+    <img src="/images/kawama-home-hero-new.webp" alt="A black cooking pot and fresh ingredients in a warmly lit kitchen" width="2048" height="768" fetchpriority="high" decoding="async" />
   </div>
 </section>
 
@@ -32,7 +32,7 @@
     @for (category of categories; track category.id) {
       <a class="home-category-card" routerLink="/shop" [queryParams]="{ category: category.name }">
         @if (category.image; as image) {
-        <img [src]="image.src" [alt]="image.alt" width="600" height="420" loading="lazy" />
+        <img [src]="image.src" [alt]="image.alt" width="600" height="420" loading="lazy" decoding="async" />
         }
         <span>{{ category.name }}</span>
         <span class="category-action" aria-hidden="true"><i class="uil uil-arrow-right"></i></span>
@@ -111,7 +111,7 @@
 }
 
 <section class="home-promo page-shell" aria-labelledby="home-promo-title">
-  <img src="/images/kawama-editorial.png" alt="Cookware and kitchen tools arranged on a wooden preparation table" width="1024" height="1024" loading="lazy" />
+  <img src="/images/kawama-editorial-square.webp" alt="Cookware and kitchen tools arranged on a wooden preparation table" width="640" height="640" loading="lazy" decoding="async" />
   <div>
     <h2 id="home-promo-title">Build a kitchen that works for you</h2>
     <p>Compare practical options, save your cart, and pay securely through the Kawama checkout.</p>
