@@ -1,4 +1,4 @@
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Subject } from 'rxjs';
@@ -18,7 +18,7 @@ describe('AskKawamaComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AskKawamaComponent],
-      providers: [provideRouter([])],
+      providers: [provideHttpClient(), provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(AskKawamaComponent);
@@ -58,6 +58,34 @@ describe('AskKawamaComponent', () => {
     const productLink = fixture.nativeElement.querySelector('.ask-kawama-products a') as HTMLAnchorElement;
     expect(productLink.textContent).toContain('Smoothie Blender');
     expect(productLink.getAttribute('href')).toBe('/product/smoothie-blender');
+  });
+
+  it('formats assistant lists, emphasis, and safe web links', () => {
+    service.panelOpen.set(true);
+    component.submit('Show me appliances');
+
+    response$.next({
+      conversationId: '8f459851-2bd0-4fa7-a48b-2712fb92a902',
+      assistantMessage: [
+        'Here are **verified options**:',
+        '1. Stainless kettle - https://kawama.vercel.app/product/stainless-kettle',
+        '2. [Blender details](https://kawama.vercel.app/product/kitchen-blender)',
+      ].join('\n'),
+      products: [],
+      suggestedFollowUps: [],
+    });
+    fixture.detectChanges();
+
+    const richTextBlocks = fixture.nativeElement.querySelectorAll('.ask-kawama-rich-text') as NodeListOf<HTMLElement>;
+    const richText = richTextBlocks.item(richTextBlocks.length - 1);
+    const links = [...richText.querySelectorAll('a')] as HTMLAnchorElement[];
+    expect(richText.querySelector('strong')?.textContent).toBe('verified options');
+    expect(richText.querySelectorAll('ol li').length).toBe(2);
+    expect(links.map((link) => link.href)).toEqual([
+      'https://kawama.vercel.app/product/stainless-kettle',
+      'https://kawama.vercel.app/product/kitchen-blender',
+    ]);
+    expect(links.every((link) => link.target === '')).toBeTrue();
   });
 
   it('cancels an active request and prevents its response from restoring a reset chat', () => {

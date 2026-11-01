@@ -14,11 +14,108 @@ interface ChatMessage {
   readonly id: number;
   readonly role: 'assistant' | 'user';
   readonly text: string;
+  readonly formattedText?: readonly ChatContentBlock[];
   readonly products?: readonly ShoppingChatProduct[];
   readonly suggestedFollowUps?: readonly string[];
   readonly error?: boolean;
   readonly retryMessage?: string;
   readonly restartBeforeRetry?: boolean;
+}
+
+interface ChatInlineSegment {
+  readonly kind: 'text' | 'link';
+  readonly text: string;
+  readonly href?: string;
+  readonly strong?: boolean;
+}
+
+interface ChatContentBlock {
+  readonly kind: 'paragraph' | 'heading' | 'ordered-list' | 'unordered-list';
+  readonly segments?: readonly ChatInlineSegment[];
+  readonly items?: readonly (readonly ChatInlineSegment[])[];
+}
+
+const INLINE_TOKEN_PATTERN = /\[([^\]]+)]\((https?:\/\/[^\s)]+)\)|\*\*([^*]+)\*\*|https?:\/\/[^\s<]+/gi;
+const TRAILING_URL_PUNCTUATION = /[),.;!?]+$/;
+
+function inlineSegments(value: string): readonly ChatInlineSegment[] {
+  const segments: ChatInlineSegment[] = [];
+  let cursor = 0;
+
+  for (const match of value.matchAll(INLINE_TOKEN_PATTERN)) {
+    const index = match.index ?? 0;
+    if (index > cursor) segments.push({ kind: 'text', text: value.slice(cursor, index) });
+
+    if (match[1] && match[2]) {
+      segments.push({ kind: 'link', text: match[1], href: match[2] });
+    } else if (match[3]) {
+      segments.push({ kind: 'text', text: match[3], strong: true });
+    } else {
+      const token = match[0];
+      const trailing = token.match(TRAILING_URL_PUNCTUATION)?.[0] ?? '';
+      const href = trailing ? token.slice(0, -trailing.length) : token;
+      segments.push({ kind: 'link', text: href, href });
+      if (trailing) segments.push({ kind: 'text', text: trailing });
+    }
+    cursor = index + match[0].length;
+  }
+
+  if (cursor < value.length) segments.push({ kind: 'text', text: value.slice(cursor) });
+  return segments.length ? segments : [{ kind: 'text', text: value }];
+}
+
+export function formatAssistantMessage(value: string): readonly ChatContentBlock[] {
+  const blocks: ChatContentBlock[] = [];
+  const lines = value.replace(/\r\n?/g, '\n').split('\n');
+  let paragraph: string[] = [];
+  let listKind: 'ordered-list' | 'unordered-list' | undefined;
+  let listItems: (readonly ChatInlineSegment[])[] = [];
+
+  const flushParagraph = () => {
+    const text = paragraph.join(' ').trim();
+    if (text) blocks.push({ kind: 'paragraph', segments: inlineSegments(text) });
+    paragraph = [];
+  };
+  const flushList = () => {
+    if (listKind && listItems.length) blocks.push({ kind: listKind, items: listItems });
+    listKind = undefined;
+    listItems = [];
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+
+    const heading = /^(#{1,3})\s+(.+)$/.exec(line);
+    if (heading) {
+      flushParagraph();
+      flushList();
+      blocks.push({ kind: 'heading', segments: inlineSegments(heading[2]) });
+      continue;
+    }
+
+    const orderedItem = /^\d+[.)]\s+(.+)$/.exec(line);
+    const unorderedItem = /^[-*•]\s+(.+)$/.exec(line);
+    const nextListKind = orderedItem ? 'ordered-list' : unorderedItem ? 'unordered-list' : undefined;
+    if (nextListKind) {
+      flushParagraph();
+      if (listKind && listKind !== nextListKind) flushList();
+      listKind = nextListKind;
+      listItems.push(inlineSegments((orderedItem ?? unorderedItem)![1]));
+      continue;
+    }
+
+    flushList();
+    paragraph.push(line);
+  }
+
+  flushParagraph();
+  flushList();
+  return blocks.length ? blocks : [{ kind: 'paragraph', segments: inlineSegments(value) }];
 }
 
 interface ChatErrorState {
@@ -41,6 +138,7 @@ export class AskKawamaComponent {
       id: 1,
       role: 'assistant',
       text: 'Hi! I can help you find products, compare current options, and explain Kawama checkout.',
+      formattedText: formatAssistantMessage('Hi! I can help you find products, compare current options, and explain Kawama checkout.'),
     },
   ]);
   readonly sending = signal(false);
@@ -102,6 +200,7 @@ export class AskKawamaComponent {
             id: this.nextMessageId++,
             role: 'assistant',
             text: response.assistantMessage,
+            formattedText: formatAssistantMessage(response.assistantMessage),
             products: response.products,
             suggestedFollowUps: response.suggestedFollowUps,
           },
@@ -120,6 +219,7 @@ export class AskKawamaComponent {
             id: this.nextMessageId++,
             role: 'assistant',
             text: errorState.message,
+            formattedText: formatAssistantMessage(errorState.message),
             error: true,
             retryMessage: message,
             restartBeforeRetry: errorState.restartBeforeRetry,
@@ -229,6 +329,7 @@ export class AskKawamaComponent {
         id: this.nextMessageId++,
         role: 'assistant',
         text: 'New chat started. What are you shopping for?',
+        formattedText: formatAssistantMessage('New chat started. What are you shopping for?'),
       },
     ]);
     this.messageText = '';
