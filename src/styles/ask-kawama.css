@@ -109,6 +109,45 @@
 
 .ask-kawama-message.error-message { border-color: #e8a696; background: #fff5f2; color: #7e2d1d; }
 .ask-kawama-message > p { margin: 0; white-space: pre-line; font-size: .78rem; line-height: 1.6; }
+.ask-kawama-rich-text {
+  display: grid;
+  gap: .6rem;
+  font-size: .78rem;
+  line-height: 1.65;
+}
+.ask-kawama-rich-text p,
+.ask-kawama-rich-text h3,
+.ask-kawama-rich-text ol,
+.ask-kawama-rich-text ul { margin: 0; }
+.ask-kawama-rich-text h3 {
+  color: var(--ink);
+  font-size: .82rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.ask-kawama-rich-text ol,
+.ask-kawama-rich-text ul {
+  display: grid;
+  gap: .5rem;
+  padding-left: 1.2rem;
+}
+.ask-kawama-rich-text li { padding-left: .12rem; }
+.ask-kawama-rich-text li::marker { color: var(--primary-dark); font-weight: 700; }
+.ask-kawama-rich-text strong { font-weight: 750; }
+.ask-kawama-rich-text a {
+  color: var(--primary-dark);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.ask-kawama-rich-text a:hover { color: var(--primary); }
+.ask-kawama-rich-text a:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
 .ask-kawama-retry {
   min-height: 36px;
   margin-top: .55rem;

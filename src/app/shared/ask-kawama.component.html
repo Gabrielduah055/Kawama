@@ -22,7 +22,76 @@
             [class.error-message]="message.error"
             [attr.role]="message.error ? 'alert' : null"
           >
-            <p>{{ message.text }}</p>
+            @if (message.role === 'assistant' && message.formattedText; as formattedText) {
+              <div class="ask-kawama-rich-text">
+                @for (block of formattedText; track $index) {
+                  @switch (block.kind) {
+                    @case ('heading') {
+                      <h3>
+                        @for (segment of block.segments; track $index) {
+                          @if (segment.kind === 'link' && segment.href) {
+                            <a [href]="segment.href">{{ segment.text }}</a>
+                          } @else if (segment.strong) {
+                            <strong>{{ segment.text }}</strong>
+                          } @else {
+                            <span>{{ segment.text }}</span>
+                          }
+                        }
+                      </h3>
+                    }
+                    @case ('ordered-list') {
+                      <ol>
+                        @for (item of block.items; track $index) {
+                          <li>
+                            @for (segment of item; track $index) {
+                              @if (segment.kind === 'link' && segment.href) {
+                                <a [href]="segment.href">{{ segment.text }}</a>
+                              } @else if (segment.strong) {
+                                <strong>{{ segment.text }}</strong>
+                              } @else {
+                                <span>{{ segment.text }}</span>
+                              }
+                            }
+                          </li>
+                        }
+                      </ol>
+                    }
+                    @case ('unordered-list') {
+                      <ul>
+                        @for (item of block.items; track $index) {
+                          <li>
+                            @for (segment of item; track $index) {
+                              @if (segment.kind === 'link' && segment.href) {
+                                <a [href]="segment.href">{{ segment.text }}</a>
+                              } @else if (segment.strong) {
+                                <strong>{{ segment.text }}</strong>
+                              } @else {
+                                <span>{{ segment.text }}</span>
+                              }
+                            }
+                          </li>
+                        }
+                      </ul>
+                    }
+                    @default {
+                      <p>
+                        @for (segment of block.segments; track $index) {
+                          @if (segment.kind === 'link' && segment.href) {
+                            <a [href]="segment.href">{{ segment.text }}</a>
+                          } @else if (segment.strong) {
+                            <strong>{{ segment.text }}</strong>
+                          } @else {
+                            <span>{{ segment.text }}</span>
+                          }
+                        }
+                      </p>
+                    }
+                  }
+                }
+              </div>
+            } @else {
+              <p>{{ message.text }}</p>
+            }
             @if (message.retryMessage; as retryMessage) {
               <button
                 class="ask-kawama-retry"
