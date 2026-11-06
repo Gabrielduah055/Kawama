@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, signal } from '@angular/core';
 import { catchError, from, map, mergeMap, Observable, of, shareReplay, tap, throwError, toArray } from 'rxjs';
 import { environment } from '../../environments/environment';
@@ -47,7 +47,12 @@ export class ReviewService extends ReviewRepository {
       .get<ApiEnvelope<ReviewInvitation>>(
         buildApiUrl(environment.apiBaseUrl, environment.apiEndpoints.reviewInvitation, { token }),
       )
-      .pipe(map(({ data }) => data));
+      .pipe(
+        map(({ data }) => data),
+        tap((invitation) => {
+          if (invitation.alreadySubmitted) this.invalidate(invitation.product.id);
+        }),
+      );
   }
 
   override getByProductId(productId: string): Observable<readonly Review[]> {
@@ -87,7 +92,17 @@ export class ReviewService extends ReviewRepository {
       .pipe(
         map(({ data }) => data),
         tap(() => this.invalidate(productId)),
+        catchError((error: unknown) => {
+          if (this.isAlreadySubmittedError(error)) this.invalidate(productId);
+          return throwError(() => error);
+        }),
       );
+  }
+
+  private isAlreadySubmittedError(error: unknown): boolean {
+    if (!(error instanceof HttpErrorResponse)) return false;
+    const code = (error.error?.error as { code?: string } | undefined)?.code;
+    return code === 'REVIEW_ALREADY_SUBMITTED';
   }
 
   private invalidate(productId: string): void {
