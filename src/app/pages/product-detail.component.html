@@ -125,7 +125,7 @@
     <section id="product-reviews" class="customer-reviews" aria-labelledby="product-reviews-title">
       <div class="section-title-row">
         <h2 id="product-reviews-title">Customer Reviews</h2>
-        <a class="button button-outline button-small" [routerLink]="['/review', product.slug]">Write a review</a>
+        <p class="review-invitation-guidance">Bought this product? Use the purchase review link you received through WhatsApp.</p>
       </div>
       @if (reviewsLoading) {
         <app-loading-spinner label="Loading reviews..." />
@@ -141,6 +141,13 @@
                 <span class="review-stars" [attr.aria-label]="review.rating + ' out of 5 stars'">{{ '★'.repeat(review.rating) }}{{ '☆'.repeat(5 - review.rating) }}</span>
                 <time [attr.datetime]="review.createdAt">{{ review.createdAt | date: 'mediumDate' }}</time>
                 <p class="text-sm! font-medium! leading-6!">{{ review.comment }}</p>
+                @if (review.reply; as reply) {
+                  <div class="review-owner-reply">
+                    <strong>Kawama’s reply.</strong>
+                    <time [attr.datetime]="reply.createdAt">{{ reply.createdAt | date: 'mediumDate' }}</time>
+                    <p class="text-sm! font-medium! leading-6!">{{ reply.text }}</p>
+                  </div>
+                }
               </div>
             </article>
           }

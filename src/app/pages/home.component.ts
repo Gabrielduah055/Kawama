@@ -22,6 +22,7 @@ export class HomeComponent implements OnInit {
   reviewHighlights: readonly ReviewHighlight[] = [];
   loading = true;
   loadError = false;
+  reviewsLoading = false;
   reviewLoadIncomplete = false;
   private reviewSubscription?: Subscription;
 
@@ -81,15 +82,26 @@ export class HomeComponent implements OnInit {
   private loadReviewHighlights(products: readonly Product[]): void {
     this.reviewSubscription?.unsubscribe();
     this.reviewHighlights = [];
+    this.reviewsLoading = true;
     this.reviewLoadIncomplete = false;
-    if (!products.some((product) => product.inStock)) return;
+    if (!products.length) {
+      this.reviewsLoading = false;
+      return;
+    }
 
     this.reviewSubscription = this.reviewService
       .getHighlights(products)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(({ highlights, failedProductCount }) => {
-        this.reviewHighlights = highlights;
-        this.reviewLoadIncomplete = failedProductCount > 0;
+      .subscribe({
+        next: ({ highlights, failedProductCount }) => {
+          this.reviewsLoading = false;
+          this.reviewHighlights = highlights;
+          this.reviewLoadIncomplete = failedProductCount > 0;
+        },
+        error: () => {
+          this.reviewsLoading = false;
+          this.reviewLoadIncomplete = true;
+        },
       });
   }
 }
