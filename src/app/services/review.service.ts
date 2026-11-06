@@ -1,9 +1,16 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, signal } from '@angular/core';
-import { catchError, from, map, mergeMap, Observable, of, shareReplay, throwError, toArray } from 'rxjs';
+import { catchError, from, map, mergeMap, Observable, of, shareReplay, tap, throwError, toArray } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { buildApiUrl } from '../core/endpoint';
-import { Product, Review, ReviewSubmission, ReviewSummary } from '../core/store.models';
+import {
+  Product,
+  Review,
+  ReviewInvitation,
+  ReviewSubmission,
+  ReviewSubmitRequest,
+  ReviewSummary,
+} from '../core/store.models';
 
 interface ApiEnvelope<T> {
   readonly data: T;
@@ -20,8 +27,9 @@ export interface ReviewHighlightsResult {
 }
 
 export abstract class ReviewRepository {
+  abstract getInvitation(token: string): Observable<ReviewInvitation>;
   abstract getByProductId(productId: string): Observable<readonly Review[]>;
-  abstract submit(review: Omit<Review, 'id' | 'createdAt'>): Observable<ReviewSubmission>;
+  abstract submit(productId: string, review: ReviewSubmitRequest): Observable<ReviewSubmission>;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -32,6 +40,19 @@ export class ReviewService extends ReviewRepository {
 
   constructor(private readonly http: HttpClient) {
     super();
+  }
+
+  override getInvitation(token: string): Observable<ReviewInvitation> {
+    return this.http
+      .get<ApiEnvelope<ReviewInvitation>>(
+        buildApiUrl(environment.apiBaseUrl, environment.apiEndpoints.reviewInvitation, { token }),
+      )
+      .pipe(
+        map(({ data }) => data),
+        tap((invitation) => {
+          if (invitation.alreadySubmitted) this.invalidate(invitation.product.id);
+        }),
+      );
   }
 
   override getByProductId(productId: string): Observable<readonly Review[]> {
@@ -61,14 +82,32 @@ export class ReviewService extends ReviewRepository {
     return request;
   }
 
-  override submit(review: Omit<Review, 'id' | 'createdAt'>): Observable<ReviewSubmission> {
-    const { productId, reviewerName, rating, comment } = review;
+  override submit(productId: string, review: ReviewSubmitRequest): Observable<ReviewSubmission> {
+    const { token, reviewerName, rating, comment } = review;
     return this.http
       .post<ApiEnvelope<ReviewSubmission>>(
         buildApiUrl(environment.apiBaseUrl, environment.apiEndpoints.productReviews, { productId }),
-        { reviewerName, rating, comment },
+        { token, reviewerName, rating, comment },
       )
-      .pipe(map(({ data }) => data));
+      .pipe(
+        map(({ data }) => data),
+        tap(() => this.invalidate(productId)),
+        catchError((error: unknown) => {
+          if (this.isAlreadySubmittedError(error)) this.invalidate(productId);
+          return throwError(() => error);
+        }),
+      );
+  }
+
+  private isAlreadySubmittedError(error: unknown): boolean {
+    if (!(error instanceof HttpErrorResponse)) return false;
+    const code = (error.error?.error as { code?: string } | undefined)?.code;
+    return code === 'REVIEW_ALREADY_SUBMITTED';
+  }
+
+  private invalidate(productId: string): void {
+    this.requests.delete(productId);
+    this.reviewsState.update((current) => current.filter((review) => review.productId !== productId));
   }
 
   forProduct(productId: string): readonly Review[] {
@@ -88,7 +127,7 @@ export class ReviewService extends ReviewRepository {
     limit = 3,
     concurrency = 4,
   ): Observable<ReviewHighlightsResult> {
-    return from(products.filter((product) => product.inStock)).pipe(
+    return from(products).pipe(
       mergeMap(
         (product) =>
           this.getByProductId(product.id).pipe(

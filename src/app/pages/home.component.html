@@ -85,14 +85,16 @@
   </section>
 }
 
-@if (reviewHighlights.length) {
-  <section class="home-section review-highlights-section page-shell" aria-labelledby="review-highlights-title">
-    <div class="compact-heading review-highlights-heading">
-      <div>
-        <h2 id="review-highlights-title">What customers are saying</h2>
-        <p>{{ reviewLoadIncomplete ? 'Approved reviews currently available from the Kawama catalog.' : 'Recent approved reviews from the Kawama catalog.' }}</p>
-      </div>
+<section class="home-section review-highlights-section page-shell" aria-labelledby="review-highlights-title">
+  <div class="compact-heading review-highlights-heading">
+    <div>
+      <h2 id="review-highlights-title">What customers are saying</h2>
+      <p>{{ reviewLoadIncomplete && reviewHighlights.length ? 'Some customer reviews could not be loaded.' : 'Customer reviews from the Kawama catalog.' }}</p>
     </div>
+  </div>
+  @if (reviewsLoading) {
+    <app-loading-spinner label="Loading customer reviews..." />
+  } @else if (reviewHighlights.length) {
     <div class="review-highlights-grid">
       @for (highlight of reviewHighlights; track highlight.review.id; let index = $index) {
         <article class="review-highlight" [class.featured-review]="index === 0">
@@ -107,8 +109,12 @@
         </article>
       }
     </div>
-  </section>
-}
+  } @else if (reviewLoadIncomplete) {
+    <div class="empty-state compact-empty" role="alert"><h3>Customer reviews are temporarily unavailable.</h3><p class="text-[15px]! font-medium! leading-7! sm:text-base!">The rest of the storefront is still available.</p></div>
+  } @else {
+    <div class="empty-state compact-empty"><h3>No customer reviews yet.</h3><p class="text-[15px]! font-medium! leading-7! sm:text-base!">Customer reviews will appear here when they are available.</p></div>
+  }
+</section>
 
 <section class="home-promo page-shell" aria-labelledby="home-promo-title">
   <img src="/images/kawama-editorial-square.webp" alt="Cookware and kitchen tools arranged on a wooden preparation table" width="640" height="640" loading="lazy" decoding="async" />

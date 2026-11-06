@@ -46,6 +46,13 @@ export interface Review {
   readonly rating: number;
   readonly comment: string;
   readonly createdAt: string;
+  readonly reply: ReviewReply | null;
+}
+
+export interface ReviewReply {
+  readonly text: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
 }
 
 export interface ReviewSummary {
@@ -55,7 +62,23 @@ export interface ReviewSummary {
 
 export interface ReviewSubmission {
   readonly id: string;
-  readonly status: 'pending';
+  readonly status: 'approved';
+}
+
+export interface ReviewInvitation {
+  readonly product: {
+    readonly id: string;
+    readonly name: string;
+    readonly slug: string;
+  };
+  readonly alreadySubmitted: boolean;
+}
+
+export interface ReviewSubmitRequest {
+  readonly token: string;
+  readonly reviewerName: string;
+  readonly rating: number;
+  readonly comment: string;
 }
 
 export interface CartItem {
