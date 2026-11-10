@@ -38,33 +38,65 @@ interface ChatContentBlock {
 const INLINE_TOKEN_PATTERN = /\[([^\]]+)]\((https?:\/\/[^\s)]+)\)|\*\*([^*]+)\*\*|https?:\/\/[^\s<]+/gi;
 const TRAILING_URL_PUNCTUATION = /[),.;!?]+$/;
 
-function inlineSegments(value: string): readonly ChatInlineSegment[] {
+function normalizedPath(value: string): string | undefined {
+  try {
+    const path = decodeURIComponent(new URL(value, 'https://kawama.local').pathname).replace(/\/$/, '');
+    return path || '/';
+  } catch {
+    return undefined;
+  }
+}
+
+function hasCorrespondingProductCard(href: string, products: readonly ShoppingChatProduct[]): boolean {
+  const hrefPath = normalizedPath(href);
+  if (!hrefPath) return false;
+
+  return products.some((product) => {
+    const cardPath = normalizedPath(`/product/${encodeURIComponent(product.slug)}`);
+    if (hrefPath === cardPath) return true;
+    return product.url ? hrefPath === normalizedPath(product.url) : false;
+  });
+}
+
+function inlineSegments(
+  value: string,
+  products: readonly ShoppingChatProduct[] = [],
+): readonly ChatInlineSegment[] {
   const segments: ChatInlineSegment[] = [];
   let cursor = 0;
+  let matchedToken = false;
 
   for (const match of value.matchAll(INLINE_TOKEN_PATTERN)) {
+    matchedToken = true;
     const index = match.index ?? 0;
     if (index > cursor) segments.push({ kind: 'text', text: value.slice(cursor, index) });
 
     if (match[1] && match[2]) {
-      segments.push({ kind: 'link', text: match[1], href: match[2] });
+      segments.push(hasCorrespondingProductCard(match[2], products)
+        ? { kind: 'text', text: match[1] }
+        : { kind: 'link', text: match[1], href: match[2] });
     } else if (match[3]) {
       segments.push({ kind: 'text', text: match[3], strong: true });
     } else {
       const token = match[0];
       const trailing = token.match(TRAILING_URL_PUNCTUATION)?.[0] ?? '';
       const href = trailing ? token.slice(0, -trailing.length) : token;
-      segments.push({ kind: 'link', text: href, href });
+      if (!hasCorrespondingProductCard(href, products)) {
+        segments.push({ kind: 'link', text: href, href });
+      }
       if (trailing) segments.push({ kind: 'text', text: trailing });
     }
     cursor = index + match[0].length;
   }
 
   if (cursor < value.length) segments.push({ kind: 'text', text: value.slice(cursor) });
-  return segments.length ? segments : [{ kind: 'text', text: value }];
+  return segments.length || matchedToken ? segments : [{ kind: 'text', text: value }];
 }
 
-export function formatAssistantMessage(value: string): readonly ChatContentBlock[] {
+export function formatAssistantMessage(
+  value: string,
+  products: readonly ShoppingChatProduct[] = [],
+): readonly ChatContentBlock[] {
   const blocks: ChatContentBlock[] = [];
   const lines = value.replace(/\r\n?/g, '\n').split('\n');
   let paragraph: string[] = [];
@@ -73,7 +105,8 @@ export function formatAssistantMessage(value: string): readonly ChatContentBlock
 
   const flushParagraph = () => {
     const text = paragraph.join(' ').trim();
-    if (text) blocks.push({ kind: 'paragraph', segments: inlineSegments(text) });
+    const segments = text ? inlineSegments(text, products) : [];
+    if (segments.length) blocks.push({ kind: 'paragraph', segments });
     paragraph = [];
   };
   const flushList = () => {
@@ -94,7 +127,8 @@ export function formatAssistantMessage(value: string): readonly ChatContentBlock
     if (heading) {
       flushParagraph();
       flushList();
-      blocks.push({ kind: 'heading', segments: inlineSegments(heading[2]) });
+      const segments = inlineSegments(heading[2], products);
+      if (segments.length) blocks.push({ kind: 'heading', segments });
       continue;
     }
 
@@ -105,7 +139,8 @@ export function formatAssistantMessage(value: string): readonly ChatContentBlock
       flushParagraph();
       if (listKind && listKind !== nextListKind) flushList();
       listKind = nextListKind;
-      listItems.push(inlineSegments((orderedItem ?? unorderedItem)![1]));
+      const segments = inlineSegments((orderedItem ?? unorderedItem)![1], products);
+      if (segments.length) listItems.push(segments);
       continue;
     }
 
@@ -115,7 +150,9 @@ export function formatAssistantMessage(value: string): readonly ChatContentBlock
 
   flushParagraph();
   flushList();
-  return blocks.length ? blocks : [{ kind: 'paragraph', segments: inlineSegments(value) }];
+  if (blocks.length) return blocks;
+  const fallbackSegments = inlineSegments(value, products);
+  return fallbackSegments.length ? [{ kind: 'paragraph', segments: fallbackSegments }] : [];
 }
 
 interface ChatErrorState {
@@ -200,7 +237,7 @@ export class AskKawamaComponent {
             id: this.nextMessageId++,
             role: 'assistant',
             text: response.assistantMessage,
-            formattedText: formatAssistantMessage(response.assistantMessage),
+            formattedText: formatAssistantMessage(response.assistantMessage, response.products),
             products: response.products,
             suggestedFollowUps: response.suggestedFollowUps,
           },

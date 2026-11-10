@@ -165,7 +165,7 @@
 .ask-kawama-products > a {
   min-height: 76px;
   display: grid;
-  grid-template-columns: 58px minmax(0, 1fr) 20px;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
   align-items: center;
   gap: .65rem;
   border: 1px solid var(--soft-line);
@@ -182,12 +182,22 @@
   background: var(--paper);
 }
 .ask-product-placeholder { display: grid; place-items: center; color: var(--muted); font-size: 1.35rem; }
+.ask-product-details { min-width: 0; }
 .ask-kawama-products strong, .ask-kawama-products small, .ask-kawama-products em { display: block; }
 .ask-kawama-products strong { overflow: hidden; font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
 .ask-kawama-products small { margin-top: .12rem; color: var(--ink); font-size: .7rem; font-weight: 700; }
 .ask-kawama-products em { margin-top: .08rem; color: var(--success); font-size: .6rem; font-style: normal; font-weight: 700; }
 .ask-kawama-products em.out-of-stock { color: #8b4b3e; }
-.ask-kawama-products > a > i { color: var(--primary); font-size: 1rem; }
+.ask-product-action {
+  display: inline-flex;
+  align-items: center;
+  gap: .08rem;
+  color: var(--primary-dark);
+  font-size: .58rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.ask-product-action i { font-size: .9rem; }
 
 .ask-kawama-followups { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .65rem; }
 .ask-kawama-followups button {
