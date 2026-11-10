@@ -40,12 +40,12 @@ export interface ShoppingChatResponse {
   readonly suggestedFollowUps: readonly string[];
 }
 
-interface StoredChatSession {
+interface ChatSession {
   readonly conversationId: string;
   readonly sessionToken: string;
 }
 
-const CHAT_STORAGE_KEY = 'kawama-shopping-chat-v1';
+const LEGACY_CHAT_STORAGE_KEY = 'kawama-shopping-chat-v1';
 const CHAT_MESSAGE_MAX_LENGTH = 1_500;
 const CHAT_REQUEST_TIMEOUT_MS = 35_000;
 const SESSION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
@@ -55,8 +55,11 @@ const CONVERSATION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab
 export class ShoppingChatService {
   readonly panelOpen = signal(false);
   private readonly chatUrl = buildApiUrl(environment.aiApiBaseUrl, environment.apiEndpoints.shoppingChat);
+  private session?: ChatSession;
 
-  constructor(private readonly http: HttpClient) {}
+  constructor(private readonly http: HttpClient) {
+    this.removeLegacyStoredSession();
+  }
 
   openPanel(): void {
     this.panelOpen.set(true);
@@ -79,23 +82,18 @@ export class ShoppingChatService {
       return throwError(() => new RangeError(`Messages can be up to ${CHAT_MESSAGE_MAX_LENGTH} characters.`));
     }
 
-    const session = this.readSession();
-    return this.sendRequest(trimmedMessage, context, session);
+    return this.sendRequest(trimmedMessage, context, this.session);
   }
 
   clearConversation(): void {
-    if (typeof window === 'undefined') return;
-    try {
-      window.sessionStorage.removeItem(CHAT_STORAGE_KEY);
-    } catch {
-      // Chat remains usable without browser persistence.
-    }
+    this.session = undefined;
+    this.removeLegacyStoredSession();
   }
 
   private sendRequest(
     message: string,
     context?: ShoppingChatContext,
-    session?: StoredChatSession,
+    session?: ChatSession,
   ): Observable<ShoppingChatResponse> {
     const headers = session
       ? new HttpHeaders({ 'X-Chat-Session': session.sessionToken })
@@ -124,38 +122,17 @@ export class ShoppingChatService {
     };
     const sessionToken = response.headers.get('X-Chat-Session');
     if (sessionToken && SESSION_TOKEN_PATTERN.test(sessionToken) && CONVERSATION_ID_PATTERN.test(data.conversationId)) {
-      this.writeSession({ conversationId: data.conversationId, sessionToken });
+      this.session = { conversationId: data.conversationId, sessionToken };
     }
     return data;
   }
 
-  private readSession(): StoredChatSession | undefined {
-    if (typeof window === 'undefined') return undefined;
-    try {
-      const value = window.sessionStorage.getItem(CHAT_STORAGE_KEY);
-      if (!value) return undefined;
-      const parsed = JSON.parse(value) as Partial<StoredChatSession>;
-      if (
-        typeof parsed.conversationId !== 'string' ||
-        typeof parsed.sessionToken !== 'string' ||
-        !CONVERSATION_ID_PATTERN.test(parsed.conversationId) ||
-        !SESSION_TOKEN_PATTERN.test(parsed.sessionToken)
-      ) {
-        window.sessionStorage.removeItem(CHAT_STORAGE_KEY);
-        return undefined;
-      }
-      return { conversationId: parsed.conversationId, sessionToken: parsed.sessionToken };
-    } catch {
-      return undefined;
-    }
-  }
-
-  private writeSession(session: StoredChatSession): void {
+  private removeLegacyStoredSession(): void {
     if (typeof window === 'undefined') return;
     try {
-      window.sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(session));
+      window.sessionStorage.removeItem(LEGACY_CHAT_STORAGE_KEY);
     } catch {
-      // Chat remains usable without browser persistence.
+      // Chat remains usable when browser storage is unavailable.
     }
   }
 }
