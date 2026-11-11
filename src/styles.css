@@ -21,3 +21,10 @@
     @apply font-medium;
   }
 }
+
+/* Prevent iOS from zooming the page when an editable control receives focus. */
+@media (max-width: 760px) {
+  body :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select) {
+    font-size: 1rem;
+  }
+}
