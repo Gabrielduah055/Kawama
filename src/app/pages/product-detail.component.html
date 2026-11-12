@@ -86,10 +86,17 @@
           <button class="button button-primary detail-add" type="button" [disabled]="!product.inStock" (click)="addToCart()">
             <i class="uil uil-shopping-cart-alt" aria-hidden="true"></i>{{ product.inStock ? 'Add to cart' : 'Sold out' }}
           </button>
-          <button class="button button-outline detail-share" type="button" (click)="share()">
-            <i class="uil uil-share-alt" aria-hidden="true"></i>Share product
+          <button class="button button-outline detail-share" type="button" (click)="share()" [disabled]="shareImageState === 'pending'">
+            @if (shareImageState === 'pending') {
+              Preparing image…
+            } @else {
+              <i class="uil uil-share-alt" aria-hidden="true"></i>Share product
+            }
           </button>
         </div>
+        @if (sharePreparationFeedback) {
+          <p class="status-message" role="status">{{ sharePreparationFeedback }}</p>
+        }
         @if (feedback) {
           <p class="status-message" [class.error]="shareError" role="status">{{ feedback }}</p>
         }
