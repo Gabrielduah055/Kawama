@@ -27,6 +27,9 @@ export class ProductDetailComponent implements OnInit {
   shareError = false;
   activeImageIndex = 0;
   activeImageFit: 'cover' | 'contain' = 'cover';
+  private preparedShareImage?: File;
+  private preparedShareImageSrc = '';
+  private shareImageRequest = 0;
 
   constructor(
     private readonly route: ActivatedRoute,
@@ -56,11 +59,13 @@ export class ProductDetailComponent implements OnInit {
     this.activeImageIndex = 0;
     this.activeImageFit = 'cover';
     this.feedback = '';
+    this.clearPreparedShareImage();
     this.catalogRepository.getProductBySlug(this.currentSlug).subscribe({
       next: (product) => {
         this.product = product;
         this.loading = false;
         if (product) {
+          void this.prepareSelectedShareImage();
           this.reviewsLoading = true;
           this.reviews.getByProductId(product.id).subscribe({
             next: () => (this.reviewsLoading = false),
@@ -96,6 +101,7 @@ export class ProductDetailComponent implements OnInit {
     if (!this.product?.images[index]) return;
     this.activeImageIndex = index;
     this.activeImageFit = 'cover';
+    void this.prepareSelectedShareImage();
   }
 
   updateImageFit(event: Event): void {
@@ -126,14 +132,58 @@ export class ProductDetailComponent implements OnInit {
     try {
       const result = await this.sharing.shareProduct(
         this.product.name,
-        this.product.shortDescription,
+        `${this.formatPrice(this.product.price, this.product.currency)}\n${this.product.shortDescription}`,
         `/product/${this.product.slug}`,
+        this.preparedShareImageSrc === this.product.images[this.activeImageIndex]?.src
+          ? this.preparedShareImage
+          : undefined,
       );
-      this.feedback = result === 'copied' ? 'Product link copied.' : 'Product shared.';
+      this.feedback =
+        result === 'shared-image'
+          ? 'Product image and link shared.'
+          : result === 'shared-link'
+            ? 'Product link shared.'
+            : 'Product link copied.';
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return;
       this.shareError = true;
       this.feedback = 'We could not share this product. Copy the page address from your browser instead.';
     }
+  }
+
+  private async prepareSelectedShareImage(): Promise<void> {
+    const product = this.product;
+    const imageSrc = product?.images[this.activeImageIndex]?.src;
+    const request = ++this.shareImageRequest;
+    this.preparedShareImage = undefined;
+    this.preparedShareImageSrc = '';
+    if (!product || !imageSrc) return;
+
+    const image = await this.sharing.prepareImage(imageSrc, product.name);
+    if (
+      request !== this.shareImageRequest ||
+      this.product?.id !== product.id ||
+      this.product.images[this.activeImageIndex]?.src !== imageSrc
+    ) {
+      return;
+    }
+
+    this.preparedShareImage = image;
+    this.preparedShareImageSrc = image ? imageSrc : '';
+  }
+
+  private clearPreparedShareImage(): void {
+    this.shareImageRequest += 1;
+    this.preparedShareImage = undefined;
+    this.preparedShareImageSrc = '';
+  }
+
+  private formatPrice(price: number, currency: string): string {
+    return new Intl.NumberFormat('en-GH', {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(price);
   }
 }
