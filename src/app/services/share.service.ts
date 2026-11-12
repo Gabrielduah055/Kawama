@@ -4,11 +4,30 @@ export type ProductShareResult = 'shared-image' | 'shared-link' | 'copied';
 
 @Injectable({ providedIn: 'root' })
 export class ShareService {
+  private readonly imagePreparationTimeoutMs = 8_000;
+
+  supportsFileSharing(): boolean {
+    return typeof navigator !== 'undefined' && typeof navigator.canShare === 'function';
+  }
+
+  canShareImage(image: File): boolean {
+    if (!this.supportsFileSharing()) return false;
+
+    try {
+      return navigator.canShare({ files: [image] });
+    } catch {
+      return false;
+    }
+  }
+
   async prepareImage(imageUrl: string, productName: string): Promise<File | undefined> {
     if (typeof window === 'undefined' || typeof File === 'undefined') return undefined;
 
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), this.imagePreparationTimeoutMs);
+
     try {
-      const response = await fetch(new URL(imageUrl, window.location.origin));
+      const response = await fetch(new URL(imageUrl, window.location.origin), { signal: controller.signal });
       if (!response.ok) return undefined;
 
       const blob = await response.blob();
@@ -20,6 +39,8 @@ export class ShareService {
       return new File([blob], fileName, { type: blob.type });
     } catch {
       return undefined;
+    } finally {
+      window.clearTimeout(timeout);
     }
   }
 
@@ -37,13 +58,9 @@ export class ShareService {
       const shareData: ShareData = { title, text, url };
       let sharesImage = false;
 
-      if (image && navigator.canShare) {
-        try {
-          sharesImage = navigator.canShare({ files: [image] });
-          if (sharesImage) shareData.files = [image];
-        } catch {
-          sharesImage = false;
-        }
+      if (image && this.canShareImage(image)) {
+        sharesImage = true;
+        shareData.files = [image];
       }
 
       try {

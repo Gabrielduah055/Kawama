@@ -9,6 +9,8 @@ import { ReviewService } from '../services/review.service';
 import { ShareService } from '../services/share.service';
 import { LoadingSpinnerComponent } from '../shared/loading-spinner.component';
 
+type ShareImageState = 'pending' | 'ready' | 'unavailable';
+
 @Component({
   standalone: true,
   imports: [CommonModule, RouterLink, ProductCardComponent, LoadingSpinnerComponent],
@@ -24,7 +26,9 @@ export class ProductDetailComponent implements OnInit {
   private currentSlug = '';
   quantity = 1;
   feedback = '';
+  sharePreparationFeedback = '';
   shareError = false;
+  shareImageState: ShareImageState = 'unavailable';
   activeImageIndex = 0;
   activeImageFit: 'cover' | 'contain' = 'cover';
   private preparedShareImage?: File;
@@ -126,14 +130,16 @@ export class ProductDetailComponent implements OnInit {
   }
 
   async share(): Promise<void> {
-    if (!this.product) return;
+    if (!this.product || this.shareImageState === 'pending') return;
     this.feedback = '';
+    this.sharePreparationFeedback = '';
     this.shareError = false;
     try {
       const result = await this.sharing.shareProduct(
         this.product.name,
         `${this.formatPrice(this.product.price, this.product.currency)}\n${this.product.shortDescription}`,
         `/product/${this.product.slug}`,
+        this.shareImageState === 'ready' &&
         this.preparedShareImageSrc === this.product.images[this.activeImageIndex]?.src
           ? this.preparedShareImage
           : undefined,
@@ -157,9 +163,27 @@ export class ProductDetailComponent implements OnInit {
     const request = ++this.shareImageRequest;
     this.preparedShareImage = undefined;
     this.preparedShareImageSrc = '';
-    if (!product || !imageSrc) return;
+    this.sharePreparationFeedback = '';
+    this.shareImageState = imageSrc ? 'pending' : 'unavailable';
+    if (!product || !imageSrc) {
+      if (product) {
+        this.sharePreparationFeedback = 'Product image sharing is unavailable. You can still share the product link.';
+      }
+      return;
+    }
 
-    const image = await this.sharing.prepareImage(imageSrc, product.name);
+    if (!this.sharing.supportsFileSharing()) {
+      this.shareImageState = 'unavailable';
+      this.sharePreparationFeedback = 'Image file sharing is not supported here. You can still share the product link.';
+      return;
+    }
+
+    let image: File | undefined;
+    try {
+      image = await this.sharing.prepareImage(imageSrc, product.name);
+    } catch {
+      image = undefined;
+    }
     if (
       request !== this.shareImageRequest ||
       this.product?.id !== product.id ||
@@ -168,14 +192,29 @@ export class ProductDetailComponent implements OnInit {
       return;
     }
 
-    this.preparedShareImage = image;
-    this.preparedShareImageSrc = image ? imageSrc : '';
+    if (image) {
+      if (this.sharing.canShareImage(image)) {
+        this.preparedShareImage = image;
+        this.preparedShareImageSrc = imageSrc;
+        this.shareImageState = 'ready';
+        return;
+      }
+
+      this.shareImageState = 'unavailable';
+      this.sharePreparationFeedback = 'This image type cannot be shared here. You can still share the product link.';
+      return;
+    }
+
+    this.shareImageState = 'unavailable';
+    this.sharePreparationFeedback = 'The product image could not be prepared for sharing. You can still share the product link.';
   }
 
   private clearPreparedShareImage(): void {
     this.shareImageRequest += 1;
     this.preparedShareImage = undefined;
     this.preparedShareImageSrc = '';
+    this.shareImageState = 'unavailable';
+    this.sharePreparationFeedback = '';
   }
 
   private formatPrice(price: number, currency: string): string {
