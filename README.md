@@ -24,6 +24,16 @@ The Angular app must never call the webhook. A redirect or `reference`/`trxref` 
 
 Product payment excludes delivery. Delivery charges are quoted separately and coordinated after payment. WhatsApp is an optional post-payment contact action and a missing business WhatsApp number does not block checkout.
 
+### WhatsApp purchase callback
+
+Customers who start payment through the backend OrderBridge WhatsApp integration return to a separate storefront page that does not depend on browser checkout state. Configure this setting separately on the backend deployment:
+
+```text
+ORDERBRIDGE_WHATSAPP_CALLBACK_URL=https://kawama.vercel.app/checkout/whatsapp-result
+```
+
+The WhatsApp return page does not verify payment from redirect parameters. Customers return to the configured business WhatsApp chat for payment confirmation and receipts. Do not expose the OrderBridge API key or call its authenticated endpoints from Angular.
+
 ## Ask Kawama
 
 The global shopping widget calls `POST /api/ai/chat` on the same backend origin. The first request omits `X-Chat-Session`; the frontend saves the returned opaque session header and `conversationId` in guarded `sessionStorage` for later turns. Product pages send the current product slug as request context, and canonical product cards returned by the backend route to `/product/:slug`.

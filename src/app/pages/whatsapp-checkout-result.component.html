@@ -1,0 +1,25 @@
+<div class="checkout-result-page page-shell">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a routerLink="/">Home</a><span>/</span><span>Payment check</span>
+  </nav>
+
+  <section class="checkout-result-card" aria-labelledby="whatsapp-result-title">
+    <div class="result-icon pending" aria-hidden="true"><i class="uil uil-whatsapp"></i></div>
+    <p class="section-label">WhatsApp purchase</p>
+    <h1 id="whatsapp-result-title">Check your payment in WhatsApp</h1>
+    <p>Payment confirmation and receipts for WhatsApp purchases are sent through WhatsApp. Return to your Kawama chat to check the current payment status.</p>
+    <p class="checkout-context-note">Returning from Paystack is not proof of payment.</p>
+
+    <div class="result-actions">
+      @if (whatsappUrl) {
+        <a class="button button-primary" [href]="whatsappUrl" target="_blank" rel="noopener">
+          <i class="uil uil-whatsapp" aria-hidden="true"></i>Return to WhatsApp
+        </a>
+        <a class="button button-outline" routerLink="/shop">Continue shopping</a>
+      } @else {
+        <a class="button button-primary" routerLink="/contact">Contact Kawama</a>
+        <a class="button button-outline" routerLink="/shop">Continue shopping</a>
+      }
+    </div>
+  </section>
+</div>

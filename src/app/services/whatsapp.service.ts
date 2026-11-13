@@ -46,6 +46,13 @@ export class WhatsAppService {
     return `${target}?text=${encodeURIComponent(message)}`;
   }
 
+  buildPaymentStatusCheckUrl(): string | undefined {
+    const number = STOREFRONT_CONFIG.whatsappNumber.replace(/\D/g, '');
+    if (!number) return undefined;
+    const target = resolveEndpoint(environment.externalEndpoints.whatsappChat, { number });
+    return `${target}?text=${encodeURIComponent('Please check my payment status.')}`;
+  }
+
   private money(value: number): string {
     return new Intl.NumberFormat(STOREFRONT_CONFIG.locale, {
       style: 'currency',
