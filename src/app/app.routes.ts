@@ -8,6 +8,7 @@ import { ShopComponent } from './pages/shop.component';
 import { CheckoutComponent } from './pages/checkout.component';
 import { ContactComponent } from './pages/contact.component';
 import { CheckoutResultComponent } from './pages/checkout-result.component';
+import { WhatsAppCheckoutResultComponent } from './pages/whatsapp-checkout-result.component';
 import { PoliciesComponent } from './pages/policies.component';
 
 export const routes: Routes = [
@@ -15,6 +16,7 @@ export const routes: Routes = [
   { path: 'shop', component: ShopComponent, title: 'Shop kitchenware | Kawama' },
   { path: 'product/:slug', component: ProductDetailComponent, title: 'Product | Kawama' },
   { path: 'cart', component: CartComponent, title: 'Your cart | Kawama' },
+  { path: 'checkout/whatsapp-result', component: WhatsAppCheckoutResultComponent, title: 'Check your payment in WhatsApp | Kawama' },
   { path: 'checkout/result', component: CheckoutResultComponent, title: 'Payment status | Kawama' },
   { path: 'checkout', component: CheckoutComponent, title: 'Checkout | Kawama' },
   { path: 'contact', component: ContactComponent, title: 'Contact | Kawama' },

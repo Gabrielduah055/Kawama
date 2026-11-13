@@ -143,6 +143,7 @@
 .checkout-result-card { width: min(100%, 720px); margin: 2rem auto 0; border: 1px solid var(--line); border-radius: var(--radius); padding: clamp(1.3rem, 4vw, 2.5rem); text-align: center; box-shadow: var(--shadow); }
 .checkout-result-card h1 { margin: .3rem 0 .65rem; font-size: clamp(2rem, 5vw, 3.2rem); line-height: 1.05; letter-spacing: -.04em; }
 .checkout-result-card > p:not(.section-label) { max-width: 580px; margin: 0 auto; color: var(--muted); line-height: 1.7; }
+.checkout-result-card > .checkout-context-note { margin-top: 1rem; color: var(--ink); text-align: left; }
 .result-icon { width: 64px; height: 64px; display: grid; place-items: center; margin: 0 auto 1rem; border-radius: 50%; font-size: 2rem; }
 .result-icon.paid { background: var(--success-soft); color: var(--success); }
 .result-icon.pending { background: var(--primary-soft); color: var(--primary); }
